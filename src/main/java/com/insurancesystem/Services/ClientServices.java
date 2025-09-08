@@ -4,17 +4,20 @@ import com.insurancesystem.Exception.BadRequestException;
 import com.insurancesystem.Exception.NotFoundException;
 import com.insurancesystem.Model.Dto.ClientDto;
 import com.insurancesystem.Model.Dto.UpdateUserDTO;
+import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.Entity.Enums.MemberStatus;
 import com.insurancesystem.Model.Entity.Enums.RoleName;
 import com.insurancesystem.Model.Entity.Enums.RoleRequestStatus;
-import com.insurancesystem.Model.Entity.Role;
-import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.MapStruct.ClientMapper;
 import com.insurancesystem.Repository.ClientRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.*;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -30,7 +33,6 @@ public class ClientServices {
     private final PolicyService policyService;
     private final NotificationService notificationService;
 
-
     @Transactional(readOnly = true)
     public List<ClientDto> list() {
         return clientRepo.findAll().stream().map(clientMapper::toDTO).toList();
@@ -43,11 +45,35 @@ public class ClientServices {
         return clientMapper.toDTO(user);
     }
 
-    public ClientDto update(UUID id, UpdateUserDTO dto) {
+    public ClientDto update(UUID id, UpdateUserDTO dto, MultipartFile universityCard) {
         Client user = clientRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("User not found"));
+
+        // ✅ تحديث البيانات الأساسية
         clientMapper.updateEntityFromDTO(dto, user);
-        return clientMapper.toDTO(clientRepo.save(user));
+
+        // ✅ تخزين الصورة إن وُجدت
+        if (universityCard != null && !universityCard.isEmpty()) {
+            String fileName = UUID.randomUUID() + "_" + universityCard.getOriginalFilename();
+            Path uploadPath = Paths.get("uploads/cards");
+
+            try {
+                if (!Files.exists(uploadPath)) {
+                    Files.createDirectories(uploadPath);
+                }
+                Path filePath = uploadPath.resolve(fileName);
+                Files.copy(universityCard.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+                user.setUniversityCardImage("/uploads/cards/" + fileName);
+            } catch (IOException e) {
+                throw new RuntimeException("❌ Failed to save university card image", e);
+            }
+        }
+
+        user.setUpdatedAt(Instant.now());
+        clientRepo.save(user);
+
+        return clientMapper.toDTO(user);
     }
 
     public void delete(UUID id) {
@@ -83,14 +109,8 @@ public class ClientServices {
         u.setRoleRequestStatus(RoleRequestStatus.APPROVED);
         u.setRequestedRole(null);
 
-        //  إذا كان عميل تأمين، اربط معه البوليصة
-        if (role.getName() == RoleName.INSURANCE_CLIENT) {
-            policyService.assignPolicyByName(u.getId(), "General University Staff Insurance");
-        }
-
         clientRepo.save(u);
 
-        // ✉️ أرسل إيميل للمستخدم
         emailService.sendRoleApprovalEmail(u.getEmail(), u.getFullName(), role.getName());
 
         notificationService.sendToUser(
@@ -115,9 +135,7 @@ public class ClientServices {
             throw new BadRequestException("No pending role request for this client");
         }
 
-        // ✉️ أرسل إيميل قبل الحذف
         emailService.sendRoleRejectionEmail(u.getEmail(), u.getFullName(), u.getRequestedRole(), reason);
-
 
         notificationService.sendToUser(
                 u.getId(),
@@ -128,8 +146,8 @@ public class ClientServices {
                 RoleName.INSURANCE_MANAGER,
                 "مستخدم جديد (" + u.getFullName() + ") سجل وينتظر الموافقة."
         );
+        u.getRoles().clear();
 
         clientRepo.delete(u);
     }
-
 }

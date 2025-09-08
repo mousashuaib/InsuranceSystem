@@ -8,7 +8,9 @@ import com.insurancesystem.Model.Dto.UpdatePolicyDTO;
 import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.Entity.Policy;
 import com.insurancesystem.Model.MapStruct.PolicyMapper;
+import com.insurancesystem.Repository.ClaimRepository;
 import com.insurancesystem.Repository.ClientRepository;
+import com.insurancesystem.Repository.CoverageRepository;
 import com.insurancesystem.Repository.PolicyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,10 @@ public class PolicyService {
     private final PolicyRepository policyRepo;
     private final PolicyMapper policyMapper;
     private final ClientRepository clientRepo;
+    private final CoverageRepository coverageRepository;
+    private final ClaimRepository claimRepository;
+
+
 
 
     public PolicyDTO create(CreatePolicyDTO dto) {
@@ -54,9 +60,25 @@ public class PolicyService {
         return policyMapper.toDTO(policyRepo.save(entity));
     }
 
+    @Transactional
     public void delete(UUID id) {
-        if (!policyRepo.existsById(id)) throw new NotFoundException("Policy not found");
-        policyRepo.deleteById(id);
+        Policy policy = policyRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Policy not found"));
+
+        // افصل العملاء عن البوليصة
+        List<Client> clients = clientRepo.findByPolicy(policy);
+        for (Client c : clients) {
+            c.setPolicy(null);
+            clientRepo.save(c);
+        }
+        claimRepository.deleteAllByPolicy(policy);
+
+
+        // احذف الكفرجز المرتبطة
+        coverageRepository.deleteAll(policy.getCoverages());
+
+        // احذف البوليصة
+        policyRepo.delete(policy);
     }
 
     public void assignPolicyToClient(UUID clientId, UUID policyId) {
@@ -72,8 +94,13 @@ public class PolicyService {
 
     public void assignPolicyByName(UUID clientId, String policyName) {
         Policy policy = policyRepo.findByName(policyName)
-                .orElseThrow(() -> new NotFoundException("Policy with name " + policyName + " not found"));
-        assignPolicyToClient(clientId, policy.getId());
+                .orElseThrow(() -> new NotFoundException("Policy not found: " + policyName));
+
+        Client client = clientRepo.findById(clientId)
+                .orElseThrow(() -> new NotFoundException("Client not found"));
+
+        client.setPolicy(policy);
+        clientRepo.save(client); // ⬅️ مهم جداً
     }
 
     public PolicyDTO getPolicyByUsername(String username) {

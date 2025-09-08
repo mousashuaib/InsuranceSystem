@@ -68,4 +68,5 @@ public class EmergencyRequestController {
     ) {
         return ResponseEntity.ok(emergencyService.rejectEmergencyRequest(id, dto));
     }
+
 }

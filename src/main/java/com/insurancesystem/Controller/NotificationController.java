@@ -67,5 +67,32 @@ public class NotificationController {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         notificationService.markAllAsRead(user.getId());
     }
+    @PatchMapping("/{id}/read")
+    @PreAuthorize("isAuthenticated()")
+    public void markAsRead(@PathVariable UUID id, Authentication auth) {
+        String username = auth.getName();
+        Client user = clientRepo.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        notificationService.markAsRead(user.getId(), id);
+    }
+
+    @GetMapping("/unread-count")
+    @PreAuthorize("isAuthenticated()")
+    public long getUnreadCount(Authentication auth) {
+        String username = auth.getName();
+        Client user = clientRepo.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return notificationService.countUnreadNotifications(user.getId());
+    }
+    @GetMapping("/unread-count/emergency")
+    @PreAuthorize("hasRole('EMERGENCY_MANAGER')")
+    public long getUnreadEmergencyCount(Authentication auth) {
+        String username = auth.getName();
+        Client user = clientRepo.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return notificationService.countUnreadEmergencyNotifications(user.getId());
+    }
+
+
 
 }

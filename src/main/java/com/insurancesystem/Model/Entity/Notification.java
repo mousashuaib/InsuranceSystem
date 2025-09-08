@@ -1,5 +1,6 @@
 package com.insurancesystem.Model.Entity;
 
+import com.insurancesystem.Model.Entity.Enums.NotificationType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -36,4 +37,11 @@ public class Notification {
     void prePersist() {
         this.createdAt = Instant.now();
     }
+    @Enumerated(EnumType.STRING)
+    private NotificationType type; // ✅ نوع الإشعار (MANUAL_MESSAGE, CLAIM, EMERGENCY, SYSTEM)
+
+    @ManyToOne
+    @JoinColumn(name = "sender_id", nullable = false)
+    private Client sender; // ✅ المرسل
 }
+

@@ -8,10 +8,8 @@ import com.insurancesystem.Model.Dto.auth.LoginRequest;
 import com.insurancesystem.Model.Dto.auth.RegisterRequest;
 import com.insurancesystem.Model.Dto.auth.RegisterResponse;
 import com.insurancesystem.Model.Entity.Enums.MemberStatus;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.insurancesystem.Model.Entity.Enums.RoleName;
 import com.insurancesystem.Model.Entity.Enums.RoleRequestStatus;
-import com.insurancesystem.Model.Entity.Role;
 import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.MapStruct.ClientMapper;
 import com.insurancesystem.Repository.ClientRepository;
@@ -21,7 +19,6 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,8 +28,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -48,11 +44,17 @@ public class AuthService {
     private final JwtService jwtService;
     private final ClientServices clientServices;
     private final NotificationService notificationService;
+    private final PolicyService policyService;
+    private final EmailService emailService;
+
+
+    // ✅ مكان بسيط لتخزين reset tokens (للتجربة فقط)
+    private final Map<String, String> resetTokens = new HashMap<>();
 
     public RegisterResponse register(String reqJson, MultipartFile universityCard) {
         RegisterRequest req;
         try {
-            req = new ObjectMapper().readValue(reqJson, RegisterRequest.class);
+            req = new com.fasterxml.jackson.databind.ObjectMapper().readValue(reqJson, RegisterRequest.class);
         } catch (Exception e) {
             throw new BadRequestException("Invalid registration data");
         }
@@ -65,7 +67,6 @@ public class AuthService {
         if (email != null && clientRepo.existsByEmail(email))
             throw new BadRequestException("Email already exists");
 
-        // 🔽 تجهيز مسار الصورة (افتراضي null)
         String imagePath = null;
         if (universityCard != null && !universityCard.isEmpty()) {
             try {
@@ -78,13 +79,12 @@ public class AuthService {
                 Path path = uploadDir.resolve(filename);
                 Files.write(path, universityCard.getBytes());
 
-                imagePath = "/uploads/cards/" + filename; // نخزن كـ URL نسبي
+                imagePath = "/uploads/cards/" + filename;
             } catch (IOException e) {
                 throw new RuntimeException("Failed to upload university card", e);
             }
         }
 
-        // ⬇️ بناء الكيان مع الصورة
         Client client = Client.builder()
                 .username(username)
                 .passwordHash(passwordEncoder.encode(req.getPassword()))
@@ -96,30 +96,30 @@ public class AuthService {
                 .requestedRole(req.getDesiredRole() == null ? RoleName.INSURANCE_CLIENT : req.getDesiredRole())
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
-                .universityCardImage(imagePath) // ✅ نثبت القيمة هنا
+                .universityCardImage(imagePath)
                 .build();
 
-        // 🚫 منع تسجيل مدراء التأمين والطوارئ من الواجهة
         if (client.getRequestedRole() == RoleName.INSURANCE_MANAGER || client.getRequestedRole() == RoleName.EMERGENCY_MANAGER) {
             throw new BadRequestException("This role can only be created by system administrators");
         }
 
         Client saved = clientRepo.save(client);
 
-        // 🔑 تأكد انه القيمة محفوظة
         if (imagePath != null) {
             saved.setUniversityCardImage(imagePath);
             saved = clientRepo.save(saved);
         }
 
+        if (client.getRequestedRole() == RoleName.INSURANCE_CLIENT && req.isAgreeToPolicy()) {
+            policyService.assignPolicyByName(saved.getId(), "Birzeit University Premium Plus Plan");
+        }
+
         ClientDto dto = clientMapper.toDTO(saved);
 
-        // 🔔 إرسال إشعار لمدير التأمين
         notificationService.sendToRole(
                 RoleName.INSURANCE_MANAGER,
                 "مستخدم جديد (" + saved.getFullName() + ") سجل وينتظر الموافقة."
         );
-
 
         return RegisterResponse.builder()
                 .user(dto)
@@ -127,29 +127,23 @@ public class AuthService {
                 .build();
     }
 
-
     public AuthResponse login(LoginRequest req) {
         String username = req.getUsername().trim().toLowerCase();
 
-        // التأكد أن المستخدم موجود
         ClientDto clientDTO = clientServices.getByUsername(username);
         if (clientDTO == null) {
             throw new NotFoundException("User not found");
         }
 
-        // التحقق من حالة الحساب
         if (!"ACTIVE".equalsIgnoreCase(clientDTO.getStatus().name())) {
             throw new BadRequestException("Account is not active. Please wait for approval.");
         }
 
-        // مصادقة بيانات الدخول
         var authToken = new UsernamePasswordAuthenticationToken(username, req.getPassword());
         authenticationManager.authenticate(authToken);
 
-        // تحميل بيانات المستخدم
         var ud = customUserDetailsService.loadUserByUsername(username);
 
-        // إنشاء التوكن
         String token = jwtService.generateToken(ud.getUsername());
 
         return AuthResponse.builder()
@@ -158,4 +152,56 @@ public class AuthService {
                 .build();
     }
 
+    public void initiatePasswordReset(String email) {
+        Client client = clientRepo.findByEmail(email)
+                .orElseThrow(() -> new NotFoundException("Email not found"));
+
+        String token = UUID.randomUUID().toString();
+        resetTokens.put(token, client.getUsername());
+
+        // اللينك لازم يوجه للـ frontend
+        String resetLink = "http://localhost:5173/reset-password?token=" + token;
+
+        // إرسال الإيميل للمستخدم
+        emailService.sendSimpleMail(
+                client.getEmail(),
+                "Password Reset Request",
+                "Dear " + client.getFullName() + ",\n\nClick the link below to reset your password:\n" + resetLink
+        );
+
+        // ✅ هنا التعديل: نستعمل resetLink بدل resetUrl
+        emailService.sendCustomEmail(
+                client.getEmail(),
+                "Password Reset Request",
+                """
+                Dear %s,
+                
+                We received a request to reset your password.
+                Please click the link below to reset it:
+                
+                %s
+                
+                If you didn’t request a password reset, you can ignore this email.
+                
+                Best regards,
+                Insurance System Team
+                """.formatted(client.getFullName(), resetLink)
+        );
+    }
+
+
+    public void resetPassword(String token, String newPassword) {
+        String username = resetTokens.get(token);
+        if (username == null) {
+            throw new BadRequestException("Invalid or expired reset token");
+        }
+
+        Client client = clientRepo.findByUsername(username)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        client.setPasswordHash(passwordEncoder.encode(newPassword));
+        clientRepo.save(client);
+
+        resetTokens.remove(token);
+    }
 }

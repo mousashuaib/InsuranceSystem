@@ -19,28 +19,28 @@ public class SearchProfileController {
 
     // إنشاء بروفايل جديد عيادة او صدلية او مختبر
     @PostMapping("Create")
-    @PreAuthorize("hasAnyRole('DOCTOR','PHARMACIST','LAB_TECH')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','DOCTOR','PHARMACIST','LAB_TECH','EMERGENCY_MANAGER')")
     public SearchProfileDto create(@RequestBody SearchProfileDto dto) {
         return service.createProfile(dto);
     }
 
     // جلب بروفايل بالـ ID
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','EMERGENCY_MANAGER')")
     public SearchProfileDto getById(@PathVariable UUID id) {
         return service.getById(id);
     }
 
     // البحث بالاسم
     @GetMapping("/by-name")
-    @PreAuthorize("hasAnyRole('INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','EMERGENCY_MANAGER')")
     public List<SearchProfileDto> searchByName(@RequestParam String name) {
         return service.searchByName(name);
     }
 
     // البحث بالاسم + النوع
     @GetMapping("/by-name-type")
-    @PreAuthorize("hasAnyRole('INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','EMERGENCY_MANAGER')")
     public List<SearchProfileDto> searchByNameAndType(
             @RequestParam String name,
             @RequestParam SearchProfileType type) {
@@ -49,7 +49,7 @@ public class SearchProfileController {
 
     // البحث بالنوع فقط
     @GetMapping("/by-type")
-    @PreAuthorize("hasAnyRole('INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','EMERGENCY_MANAGER')")
     public List<SearchProfileDto> getAllByType(@RequestParam SearchProfileType type) {
         return service.getAllByType(type);
     }

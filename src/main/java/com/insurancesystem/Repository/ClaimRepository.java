@@ -3,6 +3,7 @@ package com.insurancesystem.Repository;
 import com.insurancesystem.Model.Entity.Claim;
 import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.Entity.Enums.ClaimStatus;
+import com.insurancesystem.Model.Entity.Policy;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -42,4 +43,6 @@ public interface ClaimRepository extends JpaRepository<Claim, UUID> {
             "GROUP BY c.providerName " +
             "ORDER BY SUM(c.amount) DESC")
     List<Object[]> findTopProviders();
+
+    void deleteAllByPolicy(Policy policy);
 }

@@ -1,13 +1,9 @@
 package com.insurancesystem.Controller;
 
 import com.insurancesystem.Model.Dto.ClientDto;
-import com.insurancesystem.Model.Dto.auth.AuthResponse;
-import com.insurancesystem.Model.Dto.auth.LoginRequest;
-import com.insurancesystem.Model.Dto.auth.RegisterRequest;
-import com.insurancesystem.Model.Dto.auth.RegisterResponse;
+import com.insurancesystem.Model.Dto.auth.*;
 import com.insurancesystem.Security.JwtService;
 import com.insurancesystem.Services.AuthService;
-import com.insurancesystem.Services.ClientServices;
 import com.insurancesystem.Services.ClientServices;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -35,13 +31,12 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(out);
     }
 
-
-
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req) {
         var out = authService.login(req);
         return ResponseEntity.ok(out);
     }
+
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/me")
     public ResponseEntity<ClientDto> me() {
@@ -49,6 +44,7 @@ public class AuthController {
                 .getContext().getAuthentication().getName();
         return ResponseEntity.ok(clientServices.getByUsername(username));
     }
+
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
@@ -59,5 +55,19 @@ public class AuthController {
             }
         }
         return ResponseEntity.noContent().build(); // 204
+    }
+
+    // ✅ Forgot Password
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
+        authService.initiatePasswordReset(req.getEmail());
+        return ResponseEntity.ok("Password reset link sent to your email");
+    }
+
+    // ✅ Reset Password
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
+        authService.resetPassword(req.getToken(), req.getNewPassword());
+        return ResponseEntity.ok("Password has been reset successfully");
     }
 }

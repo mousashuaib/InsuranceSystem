@@ -136,4 +136,29 @@ public class PrescriptionService {
         prescriptionRepo.delete(prescription);
     }
 
+    public PrescriptionDTO getDoctorStats() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = auth.getName();
+
+        Client doctor = clientRepo.findByUsername(currentUsername)
+                .orElseThrow(() -> new NotFoundException("Doctor not found"));
+
+        return PrescriptionDTO.builder()
+                .total(prescriptionRepo.countByDoctorId(doctor.getId()))
+                .pending(prescriptionRepo.countByDoctorIdAndStatus(doctor.getId(), PrescriptionStatus.PENDING))
+                .verified(prescriptionRepo.countByDoctorIdAndStatus(doctor.getId(), PrescriptionStatus.VERIFIED))
+                .rejected(prescriptionRepo.countByDoctorIdAndStatus(doctor.getId(), PrescriptionStatus.REJECTED))
+                .build();
+    }
+
+    public PrescriptionDTO getPharmacistStats() {
+        return PrescriptionDTO.builder()
+                .total(prescriptionRepo.count())
+                .pending(prescriptionRepo.countByStatus(PrescriptionStatus.PENDING))
+                .verified(prescriptionRepo.countByStatus(PrescriptionStatus.VERIFIED))
+                .rejected(prescriptionRepo.countByStatus(PrescriptionStatus.REJECTED))
+                .build();
+    }
+
+
 }

@@ -139,4 +139,5 @@ public class EmergencyRequestService {
 
         return emergencyRequestMapper.toDto(emergency);
     }
+
 }

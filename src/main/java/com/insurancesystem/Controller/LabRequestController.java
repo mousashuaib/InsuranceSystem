@@ -59,5 +59,12 @@ public class LabRequestController {
     public void delete(@PathVariable UUID id) {
         labService.delete(id);
     }
+    // 📊 Lab Technician stats
+    @GetMapping("/stats")
+    @PreAuthorize("hasRole('LAB_TECH')")
+    public LabRequestDTO getLabStats() {
+        return labService.getLabStats();
+    }
+
 
 }

@@ -27,6 +27,7 @@ public class RegisterRequest {
 
     // RegisterRequest.java
     private RoleName desiredRole; // OPTIONAL
+    private boolean agreeToPolicy;
 
 
 

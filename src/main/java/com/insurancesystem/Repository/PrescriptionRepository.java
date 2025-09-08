@@ -10,4 +10,10 @@ import java.util.UUID;
 public interface PrescriptionRepository extends JpaRepository<Prescription, UUID> {
     List<Prescription> findByMemberId(UUID memberId);
     List<Prescription> findByStatus(PrescriptionStatus status);
+    long countByDoctorId(UUID doctorId);
+    long countByDoctorIdAndStatus(UUID doctorId, PrescriptionStatus status);
+
+    long countByStatus(PrescriptionStatus status);
+    long countByMemberIdAndStatus(UUID memberId, PrescriptionStatus status);
+
 }

@@ -10,4 +10,6 @@ import java.util.UUID;
 public interface LabRequestRepository extends JpaRepository<LabRequest, UUID> {
     List<LabRequest> findByMemberId(UUID memberId);
     List<LabRequest> findByStatus(LabRequestStatus status);
+    long countByStatus(LabRequestStatus status);
+
 }

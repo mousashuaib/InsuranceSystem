@@ -15,5 +15,10 @@ public class NotificationDTO {
     private boolean read;
     private Instant createdAt;
     private String recipientName; // اسم المستفيد (اختياري للعرض)
+    private UUID recipientId;     // ✅ أضف هذا الحقل
+    private UUID senderId;        // ✅ المرسل
+    private String senderName;    // ✅ اسم المرسل
+
+    private String type;          // ✅ نوع الإشعار
 
 }

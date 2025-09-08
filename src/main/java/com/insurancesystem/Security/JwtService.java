@@ -16,7 +16,6 @@ public class JwtService {
 
     private final Key key;
     private final long ttlMillis;
-
     // تخزين التوكنات الملغاة حتى انتهاء صلاحيتها (in-memory)
     private final ConcurrentHashMap<String, Long> revoked = new ConcurrentHashMap<>();
 

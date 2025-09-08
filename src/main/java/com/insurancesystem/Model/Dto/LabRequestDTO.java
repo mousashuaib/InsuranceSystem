@@ -21,6 +21,10 @@ public class LabRequestDTO {
     private UUID memberId;
     private UUID doctorId;
 
+    private long total;
+    private long pending;   // طلبات لسه ما إلها نتيجة
+    private long completed; // طلبات مرفوع إلها نتيجة
+
     private Instant createdAt;
     private Instant updatedAt;
 }

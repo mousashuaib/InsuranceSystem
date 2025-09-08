@@ -7,9 +7,14 @@ import org.mapstruct.*;
 @Mapper(componentModel = "spring")
 public interface NotificationMapper {
     @Mapping(source = "recipient.fullName", target = "recipientName")
-    NotificationDTO toDto(Notification notification);
+    @Mapping(source = "recipient.id", target = "recipientId")
+    @Mapping(source = "sender.id", target = "senderId")          // ✅ أضف المرسل
+    @Mapping(source = "sender.fullName", target = "senderName")  // ✅ أضف اسم المرسل
+    @Mapping(source = "type", target = "type")
+    NotificationDTO toDto(Notification entity);
 
     @InheritInverseConfiguration
     @Mapping(target = "recipient", ignore = true)
+    @Mapping(target = "sender", ignore = true)
     Notification toEntity(NotificationDTO dto);
 }

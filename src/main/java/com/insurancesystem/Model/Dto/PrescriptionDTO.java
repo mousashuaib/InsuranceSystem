@@ -18,4 +18,9 @@ public class PrescriptionDTO {
     private UUID memberId;
     private Instant createdAt;
     private Instant updatedAt;
+
+    private long total;
+    private long pending;
+    private long verified;
+    private long rejected;
 }

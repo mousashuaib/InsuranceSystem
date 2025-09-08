@@ -64,5 +64,19 @@ public class PrescriptionController {
     public void delete(@PathVariable UUID id) {
         prescriptionService.delete(id);
     }
+    // 📊 Doctor stats
+    @GetMapping("/doctor/stats")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public PrescriptionDTO getDoctorStats() {
+        return prescriptionService.getDoctorStats();
+    }
+
+    // 📊 Pharmacist stats
+    @GetMapping("/pharmacist/stats")
+    @PreAuthorize("hasRole('PHARMACIST')")
+    public PrescriptionDTO getPharmacistStats() {
+        return prescriptionService.getPharmacistStats();
+    }
+
 
 }

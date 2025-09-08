@@ -167,5 +167,12 @@ public class LabRequestService {
 
         labRepo.delete(request);
     }
+    public LabRequestDTO getLabStats() {
+        return LabRequestDTO.builder()
+                .total(labRepo.count())
+                .pending(labRepo.countByStatus(LabRequestStatus.PENDING))
+                .completed(labRepo.countByStatus(LabRequestStatus.COMPLETED))
+                .build();
+    }
 
 }

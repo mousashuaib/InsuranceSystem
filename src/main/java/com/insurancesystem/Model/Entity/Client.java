@@ -8,7 +8,6 @@ import lombok.*;
 
 import java.time.Instant;
 import java.util.*;
-
 @Entity
 @Table(
         name = "clients",
@@ -17,10 +16,15 @@ import java.util.*;
                 @Index(name = "idx_clients_email", columnList = "email")
         }
 )
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Client {
 
-    @Id @GeneratedValue
+    @Id
+    @GeneratedValue
     private UUID id;
 
     @Column(nullable = false, unique = true, length = 64)
@@ -43,7 +47,6 @@ public class Client {
     @Column(nullable = false, length = 20)
     private MemberStatus status = MemberStatus.ACTIVE;
 
-    // طلب ترقية دور
     @Enumerated(EnumType.STRING)
     @Column(name = "requested_role", length = 40)
     private RoleName requestedRole;
@@ -63,7 +66,9 @@ public class Client {
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SearchProfile> searchProfiles = new ArrayList<>();
 
-
+    // 🟢 أضف هذا
+    @OneToMany(mappedBy = "recipient", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Notification> notifications = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;

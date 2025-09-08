@@ -79,4 +79,65 @@ public class EmailService {
         } catch (MailException ignored) {
             // Do not fail the operation
         }
-    }}
+
+
+    }
+
+    public void sendCustomEmail(String to, String subject, String body) {
+        if (to == null || to.isBlank()) return;
+
+        SimpleMailMessage msg = new SimpleMailMessage();
+        msg.setFrom(from);
+        msg.setTo(to);
+        msg.setSubject(subject);
+        msg.setText(body);
+
+        try {
+            mailSender.send(msg);
+        } catch (MailException ignored) {
+            // ما تخلي الإيميل يفشل العملية
+        }
+    }
+    public void sendSimpleMail(String to, String subject, String body) {
+        if (to == null || to.isBlank()) return;
+
+        SimpleMailMessage msg = new SimpleMailMessage();
+        msg.setFrom(from);
+        msg.setTo(to);
+        msg.setSubject(subject);
+        msg.setText(body);
+
+        try {
+            mailSender.send(msg);
+        } catch (MailException ex) {
+            // ما نفشل العملية حتى لو الإيميل ما مشي
+            ex.printStackTrace();
+        }
+    }
+
+    /**
+     * إرسال إيميل خاص بإعادة تعيين كلمة المرور
+     */
+    public void sendPasswordResetEmail(String to, String fullName, String resetLink) {
+        if (to == null || to.isBlank()) return;
+
+        String subject = "Password Reset Request";
+        String body = """
+                Dear %s,
+                
+                We received a request to reset your password.
+                Please click the link below to reset it:
+                
+                %s
+                
+                If you did not request this, you can safely ignore this email.
+                
+                Best regards,
+                Insurance System Team
+                """.formatted(fullName == null ? "" : fullName, resetLink);
+
+        sendSimpleMail(to, subject, body);
+    }
+}
+
+
