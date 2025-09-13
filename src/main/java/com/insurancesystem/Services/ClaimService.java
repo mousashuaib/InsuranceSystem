@@ -37,12 +37,22 @@ public class ClaimService {
     private final String UPLOAD_DIR = "uploads/invoices/";
 
     // إنشاء مطالبة
+    // إنشاء مطالبة
     public ClaimDTO createClaim(UUID memberId, CreateClaimDTO dto, MultipartFile invoiceImage) {
         Client member = clientRepo.findById(memberId)
                 .orElseThrow(() -> new NotFoundException("Member not found"));
 
-        Policy policy = policyRepo.findById(dto.getPolicyId())
-                .orElseThrow(() -> new NotFoundException("Policy not found"));
+        // ✅ جلب الـ Policy باستخدام ID أو Name
+        Policy policy = null;
+        if (dto.getPolicyId() != null) {
+            policy = policyRepo.findById(dto.getPolicyId())
+                    .orElseThrow(() -> new NotFoundException("Policy not found by ID"));
+        } else if (dto.getPolicyName() != null && !dto.getPolicyName().isBlank()) {
+            policy = policyRepo.findByName(dto.getPolicyName())
+                    .orElseThrow(() -> new NotFoundException("Policy not found by Name"));
+        } else {
+            throw new NotFoundException("Policy information (ID or Name) must be provided");
+        }
 
         Claim claim = claimMapper.toEntity(dto);
         claim.setMember(member);
@@ -55,6 +65,7 @@ public class ClaimService {
 
         claimRepo.save(claim);
 
+        // إشعار المدير
         notificationService.sendToRole(
                 RoleName.INSURANCE_MANAGER,
                 "مطالبة جديدة من " + member.getFullName() +
@@ -64,7 +75,6 @@ public class ClaimService {
         return claimMapper.toDto(claim);
     }
 
-    // جميع المطالبات لعضو معين
     public List<ClaimDTO> getMemberClaims(UUID memberId) {
         Client member = clientRepo.findById(memberId)
                 .orElseThrow(() -> new NotFoundException("Member not found"));
@@ -72,6 +82,8 @@ public class ClaimService {
                 .map(claimMapper::toDto)
                 .toList();
     }
+
+
 
     // جميع المطالبات للمدير
     public List<ClaimDTO> getAllClaims() {
@@ -140,10 +152,16 @@ public class ClaimService {
             Files.createDirectories(Path.of(UPLOAD_DIR));
             String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
             Path path = Path.of(UPLOAD_DIR + fileName);
+
+            // احفظ الملف
             Files.write(path, file.getBytes());
-            return path.toString();
+
+            // ✅ رجع رابط عام للمتصفح
+            return "http://localhost:8080/uploads/invoices/" + fileName;
         } catch (IOException e) {
             throw new RuntimeException("Failed to save invoice image", e);
         }
     }
+
+
 }

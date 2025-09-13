@@ -1,5 +1,6 @@
 package com.insurancesystem.Model.Dto;
 
+import com.insurancesystem.Model.Entity.Enums.NotificationType;
 import lombok.*;
 
 import java.time.Instant;
@@ -20,5 +21,6 @@ public class NotificationDTO {
     private String senderName;    // ✅ اسم المرسل
 
     private String type;          // ✅ نوع الإشعار
+
 
 }

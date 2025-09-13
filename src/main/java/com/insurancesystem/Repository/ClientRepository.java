@@ -18,4 +18,5 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
     List<Client> findByStatus(MemberStatus status);
     long countByStatus(MemberStatus status);
     List<Client> findByPolicy(Policy policy);
+    Optional<Client> findByFullName(String fullName);
 }

@@ -139,6 +139,82 @@ public class NotificationService {
         return notificationRepo.countByRecipientAndReadFalse(recipient);
     }
 
+    public void deleteNotification(UUID userId, UUID notificationId) {
+        Notification notification = notificationRepo.findById(notificationId)
+                .orElseThrow(() -> new RuntimeException("Notification not found"));
+
+        // 🔒 تحقق إنو الإشعار فعلاً للمستخدم الحالي
+        if (!notification.getRecipient().getId().equals(userId)) {
+            throw new RuntimeException("❌ You are not authorized to delete this notification");
+        }
+
+        notificationRepo.delete(notification);
+    }
+
+    // ➕ إرسال إشعار بالاسم بدل الـ UUID
+    public void createNotificationByName(String senderUsername, String recipientUsername, String message, NotificationType type, UUID repliedNotificationId) {
+        Client sender = clientRepo.findByUsername(senderUsername)
+                .orElseThrow(() -> new NotFoundException("Sender not found"));
+
+        Client recipient = clientRepo.findByUsername(recipientUsername)
+                .orElseThrow(() -> new NotFoundException("Recipient not found"));
+
+        if (repliedNotificationId != null) {
+            Notification original = notificationRepo.findById(repliedNotificationId)
+                    .orElseThrow(() -> new NotFoundException("Original notification not found"));
+            original.setRead(true);
+            notificationRepo.save(original);
+        }
+
+        Notification notification = Notification.builder()
+                .recipient(recipient)
+                .sender(sender)
+                .message(sender.getFullName() + ": " + message)
+                .read(false)
+                .type(type != null ? type : NotificationType.MANUAL_MESSAGE) // النوع جاي من الـ Frontend
+                .build();
+
+        notificationRepo.save(notification);
+    }
+  // for clinet
+  public void clientMarkAsRead(UUID clientId, UUID notificationId) {
+      Notification notification = notificationRepo.findById(notificationId)
+              .orElseThrow(() -> new NotFoundException("Notification not found"));
+
+      // ✅ إذا كانت System Message → أي Client يقدر يعلّمها مقروءة
+      if (notification.getType() == NotificationType.SYSTEM) {
+          notification.setRead(true);
+          notificationRepo.save(notification);
+          return;
+      }
+
+      // ✅ إذا كانت مش System Message → تحقق من المستلم
+      if (!notification.getRecipient().getId().equals(clientId)) {
+          throw new RuntimeException("Unauthorized: This notification is not yours");
+      }
+
+      notification.setRead(true);
+      notificationRepo.save(notification);
+  }
+
+    public void clientDeleteNotification(UUID clientId, UUID notificationId) {
+        Notification notification = notificationRepo.findById(notificationId)
+                .orElseThrow(() -> new NotFoundException("Notification not found"));
+
+        // ✅ إذا كانت System Message → اسمح لأي Client يحذفها
+        if (notification.getType() == NotificationType.SYSTEM) {
+            notificationRepo.delete(notification);
+            return;
+        }
+
+        // ✅ إذا كانت مش System Message → تحقق من المستلم
+        if (!notification.getRecipient().getId().equals(clientId)) {
+            throw new RuntimeException("Unauthorized: This notification is not yours");
+        }
+
+        notificationRepo.delete(notification);
+    }
+
 
 
 }

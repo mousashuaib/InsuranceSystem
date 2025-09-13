@@ -67,4 +67,5 @@ public class Claim {
             this.status = ClaimStatus.PENDING;
         }
     }
+
 }

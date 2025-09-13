@@ -8,6 +8,8 @@ import org.mapstruct.*;
 public interface PrescriptionMapper {
 
     @Mapping(source = "member.id", target = "memberId")
+    @Mapping(source = "doctor.fullName", target = "doctorName")  // ✅ اسم الدكتور
+    @Mapping(source = "member.fullName", target = "memberName")  // ✅ اسم المريض
     @Mapping(source = "status", target = "status")
     PrescriptionDTO toDto(Prescription entity);
 

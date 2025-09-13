@@ -12,33 +12,33 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Mapper(config = MapStructConfig.class)
-public interface ClientMapper  {
+public interface ClientMapper {
 
-    // Entity -> DTO
+    // ✅ Entity -> DTO
     @Mapping(target = "roles", expression = "java(mapRoleNames(entity.getRoles()))")
-    // 🔽 ما في داعي تكتب source = "universityCardImage" لأن الاسم نفسه، MapStruct بياخده تلقائي
     ClientDto toDTO(Client entity);
 
-    // Create DTO -> Entity
+    // ✅ Create DTO -> Entity
     @Mapping(target = "passwordHash", ignore = true)
     @Mapping(target = "roles", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    // 🔽 نخلي السيرفس يحدد الصورة عند الرفع
-    @Mapping(target = "universityCardImage", ignore = true)
+    @Mapping(target = "universityCardImage", ignore = true) // نخلي السيرفس يحددها
     Client toEntity(CreateClientDto dto);
 
-    // Update DTO -> Entity
-    @BeanMapping(ignoreByDefault = false)
+    // ✅ Update DTO -> Entity
+    @BeanMapping(ignoreByDefault = true) // نخلي MapStruct يحدث بس اللي مبعوت
+    @Mapping(target = "fullName", source = "fullName", ignore = false)
+    @Mapping(target = "email", source = "email", ignore = false)
+    @Mapping(target = "phone", source = "phone", ignore = false)
     @Mapping(target = "passwordHash", ignore = true)
     @Mapping(target = "roles", ignore = true)
-    // 🔽 برضه ما نسمح بالمسح التلقائي للصورة
     @Mapping(target = "universityCardImage", ignore = true)
     void updateEntityFromDTO(UpdateUserDTO dto, @MappingTarget Client entity);
 
-    // ===== helpers =====
+    // ===== Helpers =====
     default Set<RoleName> mapRoleNames(Set<Role> roles) {
-        return roles == null ? java.util.Set.of()
+        return roles == null ? Set.of()
                 : roles.stream().map(Role::getName).collect(Collectors.toSet());
     }
 }

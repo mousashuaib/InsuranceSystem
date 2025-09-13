@@ -1,9 +1,14 @@
 package com.insurancesystem.Controller;
 
+import com.insurancesystem.Model.Dto.ClientDto;
 import com.insurancesystem.Model.Dto.LabRequestDTO;
+import com.insurancesystem.Model.Dto.UpdateUserDTO;
 import com.insurancesystem.Services.LabRequestService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,7 +36,14 @@ public class LabRequestController {
         return labService.getMyLabs();
     }
 
-    // 🧪 Lab يرفع النتيجة (ملف حقيقي)
+    // 📖 Lab Technician يشوف الطلبات المعلقة
+    @GetMapping("/pending")
+    @PreAuthorize("hasRole('LAB_TECH')")
+    public List<LabRequestDTO> getPending() {
+        return labService.getPending();
+    }
+
+    // 🧪 Lab Technician يرفع النتيجة (ملف حقيقي)
     @PatchMapping("/{id}/upload")
     @PreAuthorize("hasRole('LAB_TECH')")
     public LabRequestDTO uploadResult(@PathVariable UUID id,
@@ -39,13 +51,13 @@ public class LabRequestController {
         return labService.uploadResult(id, file);
     }
 
-
     // 📖 Member أو Doctor يشوف نتيجة
     @GetMapping("/{id}/result")
     @PreAuthorize("hasAnyRole('INSURANCE_CLIENT','DOCTOR')")
     public LabRequestDTO getResult(@PathVariable UUID id) {
         return labService.getResult(id);
     }
+
     // ✏️ Doctor يعدل طلب
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('DOCTOR')")
@@ -59,12 +71,33 @@ public class LabRequestController {
     public void delete(@PathVariable UUID id) {
         labService.delete(id);
     }
-    // 📊 Lab Technician stats
+    @GetMapping("/doctor/my")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public List<LabRequestDTO> getByDoctor() {
+        return labService.getByDoctor();
+    }
+
+    // 📊 Lab Technician يشوف إحصائيات الطلبات
     @GetMapping("/stats")
     @PreAuthorize("hasRole('LAB_TECH')")
     public LabRequestDTO getLabStats() {
         return labService.getLabStats();
     }
+    // 👤 Lab Worker يحدّث بروفايله
+    @PatchMapping(value = "/me/update", consumes = "multipart/form-data")
+    @PreAuthorize("hasRole('LAB_TECH')")
+    public ResponseEntity<ClientDto> updateLabWorkerProfile(
+            Authentication auth,
+            @RequestPart("data") @Valid UpdateUserDTO dto,
+            @RequestPart(value = "universityCard", required = false) MultipartFile universityCard
+    ) {
+        String username = auth.getName();
+        ClientDto updated = labService.updateLabWorkerProfile(username, dto, universityCard);
+        return ResponseEntity.ok(updated);
+    }
+
+
+
 
 
 }

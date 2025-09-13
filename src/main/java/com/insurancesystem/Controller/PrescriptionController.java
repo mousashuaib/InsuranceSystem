@@ -1,10 +1,16 @@
 package com.insurancesystem.Controller;
 
+import com.insurancesystem.Model.Dto.ClientDto;
 import com.insurancesystem.Model.Dto.PrescriptionDTO;
+import com.insurancesystem.Model.Dto.UpdateUserDTO;
 import com.insurancesystem.Services.PrescriptionService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -50,7 +56,11 @@ public class PrescriptionController {
     public PrescriptionDTO reject(@PathVariable UUID id) {
         return prescriptionService.reject(id);
     }
-
+    @GetMapping("/doctor/my")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public List<PrescriptionDTO> getByDoctor() {
+        return prescriptionService.getByDoctor();
+    }
     // ✏️ Doctor يعدل وصفة
     @PatchMapping("/{id}")
     @PreAuthorize("hasRole('DOCTOR')")
@@ -64,6 +74,7 @@ public class PrescriptionController {
     public void delete(@PathVariable UUID id) {
         prescriptionService.delete(id);
     }
+
     // 📊 Doctor stats
     @GetMapping("/doctor/stats")
     @PreAuthorize("hasRole('DOCTOR')")
@@ -71,12 +82,23 @@ public class PrescriptionController {
         return prescriptionService.getDoctorStats();
     }
 
-    // 📊 Pharmacist stats
+    // 📊 Pharmacist stats (خاصة بالصيدلي الحالي)
     @GetMapping("/pharmacist/stats")
     @PreAuthorize("hasRole('PHARMACIST')")
     public PrescriptionDTO getPharmacistStats() {
         return prescriptionService.getPharmacistStats();
     }
 
-
+    // 👤 Pharmacist يحدّث بروفايله
+    @PatchMapping(value = "/pharmacist/me/update", consumes = "multipart/form-data")
+    @PreAuthorize("hasRole('PHARMACIST')")
+    public ResponseEntity<ClientDto> updatePharmacistProfile(
+            Authentication auth,
+            @RequestPart("data") @Valid UpdateUserDTO dto,
+            @RequestPart(value = "universityCard", required = false) MultipartFile universityCard
+    ) {
+        String username = auth.getName();
+        ClientDto updated = prescriptionService.updatePharmacistProfile(username, dto, universityCard);
+        return ResponseEntity.ok(updated);
+    }
 }

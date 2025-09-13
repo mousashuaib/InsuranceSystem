@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.*;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -150,4 +151,48 @@ public class ClientServices {
 
         clientRepo.delete(u);
     }
+
+
+    // 🔹 تحديث البروفايل بناءً على Username
+    public ClientDto updateByUsername(String username, UpdateUserDTO dto, MultipartFile universityCard) {
+        Client client = clientRepo.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Client not found"));
+
+        if (dto.getFullName() != null && !dto.getFullName().isBlank()) {
+            client.setFullName(dto.getFullName());
+        }
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
+            client.setEmail(dto.getEmail());
+        }
+        if (dto.getPhone() != null && !dto.getPhone().isBlank()) {
+            client.setPhone(dto.getPhone());
+        }
+
+        // ✅ الصورة
+        if (universityCard != null && !universityCard.isEmpty()) {
+            try {
+                String fileName = UUID.randomUUID() + "_" + universityCard.getOriginalFilename();
+                Path uploadPath = Paths.get("uploads/profile");
+                if (!Files.exists(uploadPath)) {
+                    Files.createDirectories(uploadPath);
+                }
+                Path filePath = uploadPath.resolve(fileName);
+                Files.copy(universityCard.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+                client.setUniversityCardImage("/uploads/profile/" + fileName);
+            } catch (IOException e) {
+                throw new RuntimeException("❌ Failed to save profile image", e);
+            }
+        }
+
+        client.setUpdatedAt(Instant.now());
+        Client updated = clientRepo.save(client);
+
+        return clientMapper.toDTO(updated);
+    }
+
+
+
+
+
 }

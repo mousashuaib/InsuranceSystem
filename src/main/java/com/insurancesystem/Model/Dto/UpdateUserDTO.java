@@ -19,4 +19,7 @@ public class UpdateUserDTO {
     private String phone;
 
     private MemberStatus status; // للأدمن فقط
+
+
+    private String universityCardImage;
 }

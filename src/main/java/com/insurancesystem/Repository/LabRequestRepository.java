@@ -11,5 +11,7 @@ public interface LabRequestRepository extends JpaRepository<LabRequest, UUID> {
     List<LabRequest> findByMemberId(UUID memberId);
     List<LabRequest> findByStatus(LabRequestStatus status);
     long countByStatus(LabRequestStatus status);
-
+    long countByStatusAndLabTechId(LabRequestStatus status, UUID labTechId);
+    List<LabRequest> findByDoctorId(UUID doctorId);
+    long countByDoctorId(UUID doctorId);
 }

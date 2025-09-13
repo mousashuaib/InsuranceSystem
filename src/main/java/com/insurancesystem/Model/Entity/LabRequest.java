@@ -40,4 +40,8 @@ public class LabRequest {
 
     private Instant createdAt;
     private Instant updatedAt;
+    @ManyToOne
+    @JoinColumn(name = "lab_tech_id")
+    private Client labTech;
+
 }

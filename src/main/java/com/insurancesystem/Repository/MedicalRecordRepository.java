@@ -8,4 +8,6 @@ import java.util.UUID;
 
 public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UUID> {
     List<MedicalRecord> findByMemberId(UUID memberId);
+    long countByDoctorId(UUID doctorId);
+
 }

@@ -1,11 +1,14 @@
 package com.insurancesystem.Services;
 
 import com.insurancesystem.Exception.NotFoundException;
+import com.insurancesystem.Model.Dto.ClientDto;
 import com.insurancesystem.Model.Dto.LabRequestDTO;
+import com.insurancesystem.Model.Dto.UpdateUserDTO;
 import com.insurancesystem.Model.Entity.Client;
+import com.insurancesystem.Model.Entity.Enums.LabRequestStatus;
 import com.insurancesystem.Model.Entity.Enums.RoleName;
 import com.insurancesystem.Model.Entity.LabRequest;
-import com.insurancesystem.Model.Entity.Enums.LabRequestStatus;
+import com.insurancesystem.Model.MapStruct.ClientMapper;
 import com.insurancesystem.Model.MapStruct.LabRequestMapper;
 import com.insurancesystem.Repository.ClientRepository;
 import com.insurancesystem.Repository.LabRequestRepository;
@@ -15,10 +18,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.io.IOException;
+import java.nio.file.*;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -31,8 +32,8 @@ public class LabRequestService {
     private final LabRequestRepository labRepo;
     private final ClientRepository clientRepo;
     private final LabRequestMapper labRequestMapper;
+    private final ClientMapper clientMapper;
     private final NotificationService notificationService;
-
 
     // ➕ Doctor ينشئ طلب فحص
     public LabRequestDTO create(LabRequestDTO dto) {
@@ -42,8 +43,16 @@ public class LabRequestService {
         Client doctor = clientRepo.findByUsername(currentUsername)
                 .orElseThrow(() -> new NotFoundException("Doctor not found"));
 
-        Client member = clientRepo.findById(dto.getMemberId())
-                .orElseThrow(() -> new NotFoundException("Member not found"));
+        Client member;
+        if (dto.getMemberId() != null) {
+            member = clientRepo.findById(dto.getMemberId())
+                    .orElseThrow(() -> new NotFoundException("Member not found"));
+        } else if (dto.getMemberName() != null) {
+            member = clientRepo.findByFullName(dto.getMemberName())
+                    .orElseThrow(() -> new NotFoundException("Member not found"));
+        } else {
+            throw new RuntimeException("Member info required");
+        }
 
         LabRequest request = labRequestMapper.toEntity(dto);
         request.setDoctor(doctor);
@@ -52,12 +61,20 @@ public class LabRequestService {
         request.setCreatedAt(Instant.now());
         request.setUpdatedAt(Instant.now());
 
-
-        notificationService.sendToUser(
-                member.getId(),
-                "تم إنشاء طلب فحص جديد: " + dto.getTestName()
-        );
         return labRequestMapper.toDto(labRepo.save(request));
+    }
+    // 📖 Doctor يشوف طلباته
+    public List<LabRequestDTO> getByDoctor() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = auth.getName();
+
+        Client doctor = clientRepo.findByUsername(currentUsername)
+                .orElseThrow(() -> new NotFoundException("Doctor not found"));
+
+        return labRepo.findByDoctorId(doctor.getId())
+                .stream()
+                .map(labRequestMapper::toDto)
+                .toList();
     }
 
     // 📖 Member يشوف طلباته
@@ -69,10 +86,25 @@ public class LabRequestService {
                 .orElseThrow(() -> new NotFoundException("Member not found"));
 
         return labRepo.findByMemberId(member.getId())
-                .stream().map(labRequestMapper::toDto).collect(Collectors.toList());
+                .stream()
+                .map(labRequestMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    // 📖 Lab Tech يشوف الطلبات المعلقة
+    public List<LabRequestDTO> getPending() {
+        return labRepo.findByStatus(LabRequestStatus.PENDING)
+                .stream()
+                .map(labRequestMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     public LabRequestDTO uploadResult(UUID id, MultipartFile file) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = auth.getName();
+        Client labTech = clientRepo.findByUsername(currentUsername)
+                .orElseThrow(() -> new NotFoundException("Lab worker not found"));
+
         LabRequest request = labRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Lab request not found"));
 
@@ -81,34 +113,22 @@ public class LabRequestService {
         }
 
         try {
-            // مسار مجلد التخزين
             String uploadDir = "uploads/labs";
             Files.createDirectories(Paths.get(uploadDir));
 
-            // اسم ملف فريد
             String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
             Path filePath = Paths.get(uploadDir, fileName);
 
-            // حفظ الملف
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-            // تحديث الداتا
-            request.setResultUrl("/" + uploadDir + "/" + fileName); // ممكن تخزن المسار أو رابط
+            request.setResultUrl("/" + uploadDir + "/" + fileName);
             request.setStatus(LabRequestStatus.COMPLETED);
+            request.setLabTech(labTech); // 🟢 لازم تحفظ مين اللابر
             request.setUpdatedAt(Instant.now());
 
         } catch (Exception e) {
             throw new RuntimeException("Failed to upload file", e);
         }
-        LabRequest saved = labRepo.save(request);
-        notificationService.sendToUser(
-                saved.getMember().getId(),
-                "نتيجة فحص (" + saved.getTestName() + ") أصبحت متاحة الآن."
-        );
-        notificationService.markNotificationAsReadByMessage(
-                RoleName.INSURANCE_MANAGER,
-                "طلب فحص جديد (" + saved.getTestName() + ") للمريض " + saved.getMember().getFullName()
-        );
 
         return labRequestMapper.toDto(labRepo.save(request));
     }
@@ -120,7 +140,8 @@ public class LabRequestService {
 
         return labRequestMapper.toDto(request);
     }
-    // Doctor يعدل طلب فحص
+
+    // ✏️ Doctor يعدل طلب
     public LabRequestDTO update(UUID id, LabRequestDTO dto) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String currentUsername = auth.getName();
@@ -131,7 +152,6 @@ public class LabRequestService {
         LabRequest request = labRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Lab request not found"));
 
-        // السماح فقط إذا كان نفس الدكتور هو صاحب الطلب
         if (!request.getDoctor().getId().equals(doctor.getId())) {
             throw new RuntimeException("You are not allowed to update this request");
         }
@@ -146,7 +166,8 @@ public class LabRequestService {
 
         return labRequestMapper.toDto(labRepo.save(request));
     }
-    //  Doctor يحذف طلب فحص
+
+    // ❌ Doctor يحذف طلب
     public void delete(UUID id) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String currentUsername = auth.getName();
@@ -167,12 +188,66 @@ public class LabRequestService {
 
         labRepo.delete(request);
     }
+
+    // 📊 Lab Technician يشوف إحصائيات الطلبات
     public LabRequestDTO getLabStats() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String currentUsername = auth.getName();
+
+        // جيب اليوزر (lab worker الحالي)
+        Client labWorker = clientRepo.findByUsername(currentUsername)
+                .orElseThrow(() -> new NotFoundException("Lab worker not found"));
+
+        long pending = labRepo.countByStatus(LabRequestStatus.PENDING);
+        long completed = labRepo.countByStatusAndLabTechId(LabRequestStatus.COMPLETED, labWorker.getId());
+
+        // المجموع = pending + completed
+        long total = pending + completed;
+
         return LabRequestDTO.builder()
-                .total(labRepo.count())
-                .pending(labRepo.countByStatus(LabRequestStatus.PENDING))
-                .completed(labRepo.countByStatus(LabRequestStatus.COMPLETED))
+                .total(total)
+                .pending(pending)
+                .completed(completed)
                 .build();
+    }
+
+
+
+    // 👤 Lab Worker يحدّث بروفايله
+    public ClientDto updateLabWorkerProfile(String username, UpdateUserDTO dto, MultipartFile universityCard) {
+        Client labWorker = clientRepo.findByUsername(username)
+                .orElseThrow(() -> new NotFoundException("Lab worker not found"));
+
+        if (dto.getFullName() != null && !dto.getFullName().isBlank()) {
+            labWorker.setFullName(dto.getFullName());
+        }
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
+            labWorker.setEmail(dto.getEmail());
+        }
+        if (dto.getPhone() != null && !dto.getPhone().isBlank()) {
+            labWorker.setPhone(dto.getPhone());
+        }
+
+        if (universityCard != null && !universityCard.isEmpty()) {
+            try {
+                String fileName = UUID.randomUUID() + "_" + universityCard.getOriginalFilename();
+                Path uploadPath = Paths.get("uploads/labworkers");
+                if (!Files.exists(uploadPath)) {
+                    Files.createDirectories(uploadPath);
+                }
+                Path filePath = uploadPath.resolve(fileName);
+                Files.copy(universityCard.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+                labWorker.setUniversityCardImage("/uploads/labworkers/" + fileName);
+            } catch (IOException e) {
+                throw new RuntimeException("❌ Failed to save lab worker image", e);
+            }
+        }
+
+        labWorker.setUpdatedAt(Instant.now());
+        Client updated = clientRepo.save(labWorker);
+
+        return clientMapper.toDTO(updated);
     }
 
 }

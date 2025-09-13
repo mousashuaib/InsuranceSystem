@@ -6,6 +6,7 @@ import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Repository.ClientRepository;
 import com.insurancesystem.Services.NotificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -93,6 +94,52 @@ public class NotificationController {
         return notificationService.countUnreadEmergencyNotifications(user.getId());
     }
 
+    // 🗑️ حذف إشعار
+    @DeleteMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<String> deleteNotification(@PathVariable UUID id, Authentication auth) {
+        String username = auth.getName();
+        Client user = clientRepo.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        notificationService.deleteNotification(user.getId(), id);
+        return ResponseEntity.ok("✅ Notification deleted successfully");
+    }
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/by-name")
+    public void sendByName(@RequestBody CreateNotificationManualDTO dto, Authentication auth) {
+        notificationService.createNotificationByName(
+                auth.getName(), dto.getRecipientName(), dto.getMessage(), dto.getType(), null
+        );
+    }
+    @PatchMapping("/{id}/read/client")
+    @PreAuthorize("isAuthenticated()")
+    public void clientMarkAsRead(@PathVariable UUID id, Authentication auth) {
+        String username = auth.getName();
+        Client client = clientRepo.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Client not found"));
+        notificationService.clientMarkAsRead(client.getId(), id);
+    }
+
+
+    @DeleteMapping("/{id}/client")
+    @PreAuthorize("isAuthenticated()")
+    public void clientDelete(@PathVariable UUID id, Authentication auth) {
+        String username = auth.getName();
+        Client client = clientRepo.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Client not found"));
+        notificationService.clientDeleteNotification(client.getId(), id);
+    }
+
+    @GetMapping("/debug")
+    public String debug(Authentication auth) {
+        return "User: " + auth.getName() + " | Authorities: " + auth.getAuthorities();
+    }
+
 
 
 }
+
+
+
+

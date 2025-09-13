@@ -49,11 +49,11 @@ public class ClaimController {
     @PreAuthorize("hasRole('INSURANCE_CLIENT')")
     @GetMapping("/allClaimForOneMember")
     public ResponseEntity<List<ClaimDTO>> getMemberClaims(Authentication auth) {
-        String username = auth.getName();
-        Client client = clientRepo.findByUsername(username)
+        Client client = clientRepo.findByUsername(auth.getName())
                 .orElseThrow(() -> new NotFoundException("Client not found"));
         return ResponseEntity.ok(claimService.getMemberClaims(client.getId()));
     }
+
 
     @PreAuthorize("hasRole('INSURANCE_MANAGER')")
     @GetMapping("/allClaimsByManager")
@@ -83,4 +83,5 @@ public class ClaimController {
     public ResponseEntity<ClaimDTO> rejectClaim(@PathVariable UUID id, @RequestBody RejectClaimDTO dto) {
         return ResponseEntity.ok(claimService.rejectClaim(id, dto));
     }
+
 }

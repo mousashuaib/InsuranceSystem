@@ -27,4 +27,5 @@ public class ClaimDTO {
     private Instant approvedAt;
     private Instant rejectedAt;
     private String rejectionReason;
+
 }
