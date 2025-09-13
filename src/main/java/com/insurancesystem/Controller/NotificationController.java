@@ -74,7 +74,7 @@ public class NotificationController {
         String username = auth.getName();
         Client user = clientRepo.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        notificationService.markAsRead(user.getId(), id);
+        notificationService.markAsRead(id, user.getId());
     }
 
     @GetMapping("/unread-count")
