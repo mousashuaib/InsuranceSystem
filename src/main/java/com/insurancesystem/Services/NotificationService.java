@@ -124,14 +124,25 @@ public class NotificationService {
         Notification notification = notificationRepo.findById(notificationId)
                 .orElseThrow(() -> new NotFoundException("Notification not found with id: " + notificationId));
 
-        // SYSTEM notifications → ما إلها recipient، نخليها تتعلم كمقروءة
         if (notification.getType() == NotificationType.SYSTEM) {
+            // 👇 إذا كان المدير أو صاحب الإشعار
+            boolean isManager = clientRepo.findById(currentUserId)
+                    .orElseThrow(() -> new NotFoundException("User not found"))
+                    .getRoles()
+                    .stream()
+                    .anyMatch(r -> r.getName().name().contains("MANAGER"));
+
+            if (!isManager && !notification.getRecipient().getId().equals(currentUserId)) {
+                throw new UnauthorizedException("❌ This SYSTEM notification is not for you");
+            }
+
             notification.setRead(true);
             notificationRepo.save(notification);
             return;
         }
 
-        // إشعارات عادية → لازم المستلم == المستخدم الحالي
+
+        // ✅ باقي الحالات (MANUAL, CLAIM, EMERGENCY)
         if (!notification.getRecipient().getId().equals(currentUserId)) {
             throw new UnauthorizedException("You are not allowed to read this notification");
         }
@@ -139,6 +150,10 @@ public class NotificationService {
         notification.setRead(true);
         notificationRepo.save(notification);
     }
+
+
+
+
     public long countUnreadNotifications(UUID recipientId) {
         Client recipient = clientRepo.findById(recipientId)
                 .orElseThrow(() -> new NotFoundException("User not found"));

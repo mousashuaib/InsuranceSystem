@@ -20,8 +20,8 @@ public class NotificationDTO {
     private UUID senderId;        // ✅ المرسل
     private String senderName;    // ✅ اسم المرسل
     private boolean replied; // ✅ جديد
+    private NotificationType type; // بدل String
 
-    private String type;          // ✅ نوع الإشعار
 
 
 }

@@ -12,6 +12,7 @@ public interface NotificationMapper {
     @Mapping(source = "sender.id", target = "senderId")          // ✅ أضف المرسل
     @Mapping(source = "sender.fullName", target = "senderName")  // ✅ أضف اسم المرسل
     @Mapping(source = "type", target = "type")
+    @Mapping(source = "id", target = "id")
     NotificationDTO toDto(Notification entity);
 
     @InheritInverseConfiguration
