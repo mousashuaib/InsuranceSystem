@@ -43,5 +43,10 @@ public class Notification {
     @ManyToOne
     @JoinColumn(name = "sender_id", nullable = false)
     private Client sender; // ✅ المرسل
+
+    @Column(nullable = false)
+    private boolean replied = false;  // ✅ default false
+
 }
+
 
