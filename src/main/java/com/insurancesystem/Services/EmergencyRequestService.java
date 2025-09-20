@@ -81,13 +81,13 @@ public class EmergencyRequestService {
                 .toList();
     }
 
-    //  عرض كل الطلبات الـ Pending
-    public List<EmergencyRequestDTO> getAllPendingRequests() {
-        return emergencyRepo.findByStatus(EmergencyStatus.PENDING)
+    public List<EmergencyRequestDTO> getAllEmergencyRequests() {
+        return emergencyRepo.findAll()
                 .stream()
                 .map(emergencyRequestMapper::toDto)
                 .toList();
     }
+
 
     //  الموافقة
     public EmergencyRequestDTO approveEmergencyRequest(UUID id) {

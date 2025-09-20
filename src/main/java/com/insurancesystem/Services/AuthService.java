@@ -47,7 +47,6 @@ public class AuthService {
     private final PolicyService policyService;
     private final EmailService emailService;
 
-
     // ✅ مكان بسيط لتخزين reset tokens (للتجربة فقط)
     private final Map<String, String> resetTokens = new HashMap<>();
 
@@ -152,40 +151,62 @@ public class AuthService {
                 .build();
     }
 
-    public void initiatePasswordReset(String email) {
+    public void initiatePasswordReset(String email, boolean isMobile) {
         Client client = clientRepo.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("Email not found"));
 
         String token = UUID.randomUUID().toString();
         resetTokens.put(token, client.getUsername());
 
-        // اللينك لازم يوجه للـ frontend
-        String resetLink = "http://localhost:5173/reset-password?token=" + token;
+        String webResetLink = "http://localhost:5173/reset-password?token=" + token;
+        String mobileResetLink = "mobileinsurancesystem://Auth/ResetPassword?token=" + token;
 
-        // إرسال الإيميل للمستخدم
-        emailService.sendSimpleMail(
-                client.getEmail(),
-                "Password Reset Request",
-                "Dear " + client.getFullName() + ",\n\nClick the link below to reset your password:\n" + resetLink
-        );
+        if (isMobile) {
+            // 📱 نبعث بس للموبايل
+            sendMobileResetEmail(client, mobileResetLink);
+        } else {
+            // 🌐 نبعث بس للويب
+            sendWebResetEmail(client, webResetLink);
+        }
+    }
 
-        // ✅ هنا التعديل: نستعمل resetLink بدل resetUrl
+    // ======================
+// 📌 إرسال لينك الويب فقط
+// ======================
+    private void sendWebResetEmail(Client client, String webResetLink) {
         emailService.sendCustomEmail(
                 client.getEmail(),
-                "Password Reset Request",
+                "Password Reset Request (Web)",
                 """
-                Dear %s,
-                
-                We received a request to reset your password.
-                Please click the link below to reset it:
-                
-                %s
-                
-                If you didn’t request a password reset, you can ignore this email.
-                
-                Best regards,
+                Dear %s,<br><br>
+                We received a request to reset your password.<br><br>
+    
+                🌐 <a href="%s">Reset your password via Web</a><br><br>
+    
+                If you didn’t request a password reset, you can safely ignore this email.<br><br>
+                Best regards,<br>
                 Insurance System Team
-                """.formatted(client.getFullName(), resetLink)
+                """.formatted(client.getFullName(), webResetLink)
+        );
+    }
+
+    // ======================
+// 📌 إرسال لينك الموبايل فقط
+// ======================
+    private void sendMobileResetEmail(Client client, String mobileResetLink) {
+        emailService.sendCustomEmail(
+                client.getEmail(),
+                "Password Reset Request (Mobile)",
+                """
+                Dear %s,<br><br>
+                We received a request to reset your password.<br><br>
+    
+                📱 <a href="%s">Reset your password via Mobile</a><br><br>
+    
+                If you didn’t request a password reset, you can safely ignore this email.<br><br>
+                Best regards,<br>
+                Insurance System Team
+                """.formatted(client.getFullName(), mobileResetLink)
         );
     }
 

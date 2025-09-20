@@ -57,12 +57,22 @@ public class AuthController {
         return ResponseEntity.noContent().build(); // 204
     }
 
-    // ✅ Forgot Password
+    // ✅ Forgot Password (Web + Mobile)
     @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
-        authService.initiatePasswordReset(req.getEmail());
-        return ResponseEntity.ok("Password reset link sent to your email");
+    public ResponseEntity<String> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest req,
+            @RequestHeader(value = "X-Client-Type", defaultValue = "WEB") String clientType) {
+
+        boolean isMobile = clientType.equalsIgnoreCase("MOBILE");
+
+        authService.initiatePasswordReset(req.getEmail(), isMobile);
+
+        return ResponseEntity.ok(
+                isMobile ? "Password reset link sent to your mobile email"
+                        : "Password reset link sent to your web email"
+        );
     }
+
 
     // ✅ Reset Password
     @PostMapping("/reset-password")

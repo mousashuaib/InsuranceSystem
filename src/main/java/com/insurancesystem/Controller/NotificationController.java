@@ -136,6 +136,23 @@ public class NotificationController {
         return "User: " + auth.getName() + " | Authorities: " + auth.getAuthorities();
     }
 
+    @PostMapping("/by-fullname")
+    @PreAuthorize("isAuthenticated()")
+    public void sendByFullName(@RequestBody CreateNotificationManualDTO dto, Authentication auth) {
+        // Find sender by logged-in user
+        String username = auth.getName();
+        Client sender = clientRepo.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Sender not found"));
+
+        // Use full names
+        notificationService.createNotificationByFullName(
+                sender.getFullName(),          // from logged-in user
+                dto.getRecipientName(),        // from frontend
+                dto.getMessage(),
+                null
+        );
+    }
+
 
 
 }

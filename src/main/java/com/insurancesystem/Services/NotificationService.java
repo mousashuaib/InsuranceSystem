@@ -13,6 +13,7 @@ import com.insurancesystem.Repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -239,6 +240,31 @@ public class NotificationService {
         }
 
         notificationRepo.delete(notification);
+    }
+
+    public void createNotificationByFullName(
+            String senderFullName,
+            String recipientFullName,
+            String message,
+            UUID parentId
+    ) {
+        Client sender = clientRepo.findByFullName(senderFullName)
+                .orElseThrow(() -> new RuntimeException("Sender not found with name: " + senderFullName));
+
+        Client recipient = clientRepo.findByFullName(recipientFullName)
+                .orElseThrow(() -> new RuntimeException("Recipient not found with name: " + recipientFullName));
+
+        Notification notification = Notification.builder()
+                .sender(sender)
+                .recipient(recipient)
+                .message(message)
+                .type(NotificationType.MANUAL_MESSAGE)
+                .read(false)
+                .replied(false)
+                .createdAt(Instant.now())
+                .build();
+
+        notificationRepo.save(notification);
     }
 
 

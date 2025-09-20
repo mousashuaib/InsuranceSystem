@@ -51,7 +51,7 @@ public class EmergencyRequestController {
     @PreAuthorize("hasAnyRole('INSURANCE_MANAGER', 'EMERGENCY_MANAGER')")
     @GetMapping("/all")
     public ResponseEntity<List<EmergencyRequestDTO>> getAllEmergencyRequests() {
-        return ResponseEntity.ok(emergencyService.getAllPendingRequests());
+        return ResponseEntity.ok(emergencyService.getAllEmergencyRequests());
     }
 
     @PreAuthorize("hasAnyRole('INSURANCE_MANAGER', 'EMERGENCY_MANAGER')")
