@@ -2,6 +2,7 @@ package com.insurancesystem.Controller;
 
 import com.insurancesystem.Model.Dto.SearchProfileDto;
 import com.insurancesystem.Model.Entity.Enums.SearchProfileType;
+import com.insurancesystem.Model.Entity.Enums.ProfileStatus;
 import com.insurancesystem.Services.SearchProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,8 +18,8 @@ public class SearchProfileController {
 
     private final SearchProfileService service;
 
-    // إنشاء بروفايل جديد عيادة او صدلية او مختبر
-    @PostMapping("Create")
+    // إنشاء بروفايل جديد
+    @PostMapping("create")
     @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','DOCTOR','PHARMACIST','LAB_TECH','EMERGENCY_MANAGER')")
     public SearchProfileDto create(@RequestBody SearchProfileDto dto) {
         return service.createProfile(dto);
@@ -53,4 +54,33 @@ public class SearchProfileController {
     public List<SearchProfileDto> getAllByType(@RequestParam SearchProfileType type) {
         return service.getAllByType(type);
     }
+
+    // ✅ Endpoint للمدير: جلب كل البروفايلات بأي حالة
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('INSURANCE_MANAGER')")
+    public List<SearchProfileDto> getAllProfiles() {
+        return service.getAllProfiles(); // يرجع Pending + Approved + Rejected
+    }
+
+
+    // ✅ موافقة
+    @PutMapping("/{id}/approve")
+    @PreAuthorize("hasRole('INSURANCE_MANAGER')")
+    public SearchProfileDto approve(@PathVariable UUID id) {
+        return service.updateStatus(id, ProfileStatus.APPROVED, null);
+    }
+
+    // ✅ رفض مع السبب
+    @PutMapping("/{id}/reject")
+    @PreAuthorize("hasRole('INSURANCE_MANAGER')")
+    public SearchProfileDto reject(@PathVariable UUID id, @RequestBody String reason) {
+        return service.updateStatus(id, ProfileStatus.REJECTED, reason);
+    }
+
+    @GetMapping("/approved")
+    @PreAuthorize("hasAnyRole('INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','EMERGENCY_MANAGER','INSURANCE_MANAGER')")
+    public List<SearchProfileDto> getApprovedProfiles() {
+        return service.getApprovedProfiles();
+    }
+
 }

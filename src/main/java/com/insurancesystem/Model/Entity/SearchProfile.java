@@ -1,5 +1,6 @@
 package com.insurancesystem.Model.Entity;
 
+import com.insurancesystem.Model.Entity.Enums.ProfileStatus;
 import com.insurancesystem.Model.Entity.Enums.SearchProfileType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -33,7 +34,7 @@ public class SearchProfile {
     private Double locationLng;  // خط الطول
 
     @Column(length = 100)
-    private String contactInfo; // رقم الهاتف أو الإيميل
+    private String contactInfo; // ✅ رقم الهاتف أو الإيميل
 
     @Column(length = 500)
     private String description; // وصف مختصر
@@ -42,8 +43,14 @@ public class SearchProfile {
     @JoinColumn(name = "owner_id", nullable = false)
     private Client owner;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private ProfileStatus status; // PENDING, APPROVED, REJECTED
+
+    @Column(length = 300)
+    private String rejectionReason; // ✅ سبب الرفض (إن وجد)
 
     public String getPhone() {
-        return owner.getPhone();
+        return contactInfo; // ✅ رقم الهاتف أو الإيميل
     }
 }

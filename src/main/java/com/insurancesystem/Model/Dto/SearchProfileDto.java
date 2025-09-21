@@ -1,6 +1,7 @@
 package com.insurancesystem.Model.Dto;
 
 import com.insurancesystem.Model.Entity.Enums.SearchProfileType;
+import com.insurancesystem.Model.Entity.Enums.ProfileStatus;
 import lombok.*;
 
 import java.util.UUID;
@@ -18,8 +19,9 @@ public class SearchProfileDto {
     private String address;
     private Double locationLat;
     private Double locationLng;
-    private String contactInfo;
+    private String contactInfo; // ✅ رقم الدكتور/الصيدلية/المختبر
     private String description;
     private String ownerName; // اسم المالك (doctor/pharmacist/lab)
-
+    private ProfileStatus status; // PENDING, APPROVED, REJECTED
+    private String rejectionReason; // ✅ سبب الرفض
 }

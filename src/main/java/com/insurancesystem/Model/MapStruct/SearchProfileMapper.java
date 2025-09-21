@@ -3,6 +3,7 @@ package com.insurancesystem.Model.MapStruct;
 import com.insurancesystem.Model.Dto.SearchProfileDto;
 import com.insurancesystem.Model.Entity.SearchProfile;
 import org.mapstruct.*;
+
 @Mapper(componentModel = "spring")
 public interface SearchProfileMapper {
 
