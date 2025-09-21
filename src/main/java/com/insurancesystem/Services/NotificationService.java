@@ -120,13 +120,9 @@ public class NotificationService {
         Notification notification = notificationRepo.findById(notificationId)
                 .orElseThrow(() -> new NotFoundException("Notification not found with id: " + notificationId));
 
-        if (notification.getType() != NotificationType.MANUAL_MESSAGE) {
-            throw new UnauthorizedException("❌ Only manual messages can be marked as read here");
-        }
-
         if (notification.getRecipient() == null ||
                 !notification.getRecipient().getId().equals(currentUser.getId())) {
-            throw new UnauthorizedException("❌ This manual message is not yours");
+            throw new UnauthorizedException("❌ This notification is not yours");
         }
 
         notification.setRead(true);
@@ -134,11 +130,12 @@ public class NotificationService {
     }
 
 
+
     public long countUnreadNotifications(UUID recipientId) {
         Client recipient = clientRepo.findById(recipientId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        return notificationRepo.countByRecipientAndTypeAndReadFalse(recipient, NotificationType.MANUAL_MESSAGE);
+        return notificationRepo.countByRecipientAndReadFalse(recipient);
     }
 
     public long countUnreadEmergencyNotifications(UUID recipientId) {
