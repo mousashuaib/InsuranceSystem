@@ -3,6 +3,7 @@ package com.insurancesystem.Services;
 import com.insurancesystem.Exception.NotFoundException;
 import com.insurancesystem.Model.Dto.SearchProfileDto;
 import com.insurancesystem.Model.Entity.Client;
+import com.insurancesystem.Model.Entity.Enums.RoleName;
 import com.insurancesystem.Model.Entity.Enums.SearchProfileType;
 import com.insurancesystem.Model.Entity.Enums.ProfileStatus;
 import com.insurancesystem.Model.Entity.SearchProfile;
@@ -26,21 +27,40 @@ public class SearchProfileService {
     private final SearchProfileMapper searchProfileMapper;
     private final ClientRepository clientRepository;
     private final CustomUserDetailsService userDetailsService;
-
-    // إنشاء بروفايل جديد
+    private final NotificationService notificationService;
     public SearchProfileDto createProfile(SearchProfileDto dto) {
         SearchProfile entity = searchProfileMapper.toEntity(dto);
 
+        // 🧑‍💻 المستخدم الحالي (صاحب الطلب)
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         Client currentUser = clientRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        // تعبئة البيانات الافتراضية
         entity.setOwner(currentUser);
         entity.setStatus(ProfileStatus.PENDING);
-        entity.setRejectionReason(null); // عند الإنشاء لا يوجد سبب رفض
+        entity.setRejectionReason(null);
 
-        return searchProfileMapper.toDto(repository.save(entity));
+        // حفظ البروفايل
+        SearchProfile savedProfile = repository.save(entity);
+
+        // 🔔 إشعار لصاحب الطلب (System → User)
+        notificationService.sendToUser(
+                currentUser.getId(),
+                "تم استلام طلبك لإنشاء بروفايل جديد وهو الآن قيد المراجعة"
+        );
+
+        // 🔔 إشعار لجميع المدراء (System → Managers)
+        notificationService.sendToRole(
+                RoleName.INSURANCE_MANAGER,
+                "يوجد طلب جديد لإنشاء بروفايل من المستخدم: " + currentUser.getUsername()
+        );
+
+        return searchProfileMapper.toDto(savedProfile);
     }
+
+
+
 
     // البحث بالاسم (الموافق عليهم فقط)
     public List<SearchProfileDto> searchByName(String name) {
@@ -69,7 +89,6 @@ public class SearchProfileService {
 
 
 
-    // تحديث الحالة
     public SearchProfileDto updateStatus(UUID id, ProfileStatus status, String rejectionReason) {
         SearchProfile profile = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Profile not found"));
@@ -78,12 +97,29 @@ public class SearchProfileService {
 
         if (status == ProfileStatus.REJECTED) {
             profile.setRejectionReason(rejectionReason);
+
+            // 🔔 إشعار لصاحب البروفايل أنه تم الرفض
+            notificationService.sendToUser(
+                    profile.getOwner().getId(),
+                    "❌ تم رفض طلب إنشاء البروفايل الخاص بك. السبب: " + rejectionReason
+            );
+
+        } else if (status == ProfileStatus.APPROVED) {
+            profile.setRejectionReason(null);
+
+            // 🔔 إشعار لصاحب البروفايل أنه تم القبول
+            notificationService.sendToUser(
+                    profile.getOwner().getId(),
+                    "✅ تم قبول طلب إنشاء البروفايل الخاص بك!"
+            );
         } else {
+            // حالة PENDING
             profile.setRejectionReason(null);
         }
 
         return searchProfileMapper.toDto(repository.save(profile));
     }
+
     // ✅ جلب كل البروفايلات
     public List<SearchProfileDto> getAllProfiles() {
         return repository.findAll()

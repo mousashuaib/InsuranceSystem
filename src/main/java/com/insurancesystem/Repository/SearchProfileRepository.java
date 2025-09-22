@@ -1,5 +1,6 @@
 package com.insurancesystem.Repository;
 
+import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.Entity.Enums.ProfileStatus;
 import com.insurancesystem.Model.Entity.SearchProfile;
 import com.insurancesystem.Model.Entity.Enums.SearchProfileType;
@@ -23,5 +24,6 @@ public interface SearchProfileRepository extends JpaRepository<SearchProfile, UU
     List<SearchProfile> findByTypeAndStatus(SearchProfileType type, ProfileStatus status);
 
     List<SearchProfile> findByStatus(ProfileStatus status);
+
 
 }
