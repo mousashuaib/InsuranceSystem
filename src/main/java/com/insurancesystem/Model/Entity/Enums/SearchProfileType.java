@@ -4,5 +4,6 @@ public enum SearchProfileType {
     CLINIC,
     PHARMACY,
     LAB,
-    DOCTOR
+    DOCTOR,
+    RADIOLOGY  // ✅ أضف هذا السطر
 }

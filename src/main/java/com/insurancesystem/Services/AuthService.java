@@ -68,7 +68,7 @@ public class AuthService {
 
         RoleName role = req.getDesiredRole() == null ? RoleName.INSURANCE_CLIENT : req.getDesiredRole();
 
-        // 🟣 التحقق من الحقول المطلوبة (ما زال نفس المنطق)
+        // ✅ التحقق من الحقول حسب الدور
         switch (role) {
             case INSURANCE_CLIENT -> {
                 if (req.getEmployeeId() == null || req.getDepartment() == null || req.getFaculty() == null)
@@ -86,12 +86,16 @@ public class AuthService {
                 if (req.getLabCode() == null || req.getLabName() == null)
                     throw new BadRequestException("Lab technician must provide lab code and name");
             }
+            case RADIOLOGIST -> {
+                if (req.getLabCode() == null || req.getLabName() == null)
+                    throw new BadRequestException("Radiologist must provide lab code and lab name");
+            }
             case INSURANCE_MANAGER, EMERGENCY_MANAGER -> {
                 throw new BadRequestException("This role can only be created by system administrators");
             }
         }
 
-        // 🟢 رفع الصورة إن وجدت
+        // ✅ رفع صورة البطاقة الجامعية (اختياري)
         String imagePath = null;
         if (universityCard != null && !universityCard.isEmpty()) {
             try {
@@ -107,7 +111,7 @@ public class AuthService {
             }
         }
 
-        // 🧩 الفرق هنا: نقرر الحالة حسب من سجّل
+        // 🧩 تحديد الحالة حسب من قام بالتسجيل
         MemberStatus status = isAdminRegister ? MemberStatus.ACTIVE : MemberStatus.INACTIVE;
         RoleRequestStatus roleStatus = isAdminRegister ? RoleRequestStatus.APPROVED : RoleRequestStatus.PENDING;
 
@@ -139,19 +143,19 @@ public class AuthService {
 
         Client saved = clientRepo.save(client);
 
-        // 🟣 لو كان مدير، نربط الدور مباشرة
+        // لو كان المدير هو اللي أنشأ الحساب، نربط الدور مباشرة
         if (isAdminRegister) {
             clientServices.addRoleToClient(saved.getId(), role);
         }
 
-        // 🟣 لو كان عميل وسجل بنفسه، ننتظر الموافقة
+        // لو عميل سجل بنفسه ووافق على السياسة، نربطه بالخطة تلقائيًا
         if (!isAdminRegister && role == RoleName.INSURANCE_CLIENT && req.isAgreeToPolicy()) {
             policyService.assignPolicyByName(saved.getId(), "Birzeit University Premium Plus Plan");
         }
 
         ClientDto dto = clientMapper.toDTO(saved);
 
-        // 🟣 إشعار فقط لو كان تسجيل عام
+        // إشعار للمدير عند التسجيل العام
         if (!isAdminRegister) {
             notificationService.sendToRole(
                     RoleName.INSURANCE_MANAGER,
@@ -166,8 +170,6 @@ public class AuthService {
                         : "Registration submitted successfully. Awaiting manager approval.")
                 .build();
     }
-
-
 
     public AuthResponse login(LoginRequest req) {
         String username = req.getUsername().trim().toLowerCase();
@@ -185,7 +187,6 @@ public class AuthService {
         authenticationManager.authenticate(authToken);
 
         var ud = customUserDetailsService.loadUserByUsername(username);
-
         String token = jwtService.generateToken(ud.getUsername());
 
         return AuthResponse.builder()
@@ -205,17 +206,12 @@ public class AuthService {
         String mobileResetLink = "mobileinsurancesystem://Auth/ResetPassword?token=" + token;
 
         if (isMobile) {
-            // 📱 نبعث بس للموبايل
             sendMobileResetEmail(client, mobileResetLink);
         } else {
-            // 🌐 نبعث بس للويب
             sendWebResetEmail(client, webResetLink);
         }
     }
 
-    // ======================
-// 📌 إرسال لينك الويب فقط
-// ======================
     private void sendWebResetEmail(Client client, String webResetLink) {
         emailService.sendCustomEmail(
                 client.getEmail(),
@@ -223,9 +219,9 @@ public class AuthService {
                 """
                 Dear %s,<br><br>
                 We received a request to reset your password.<br><br>
-    
+
                 🌐 <a href="%s">Reset your password via Web</a><br><br>
-    
+
                 If you didn’t request a password reset, you can safely ignore this email.<br><br>
                 Best regards,<br>
                 Insurance System Team
@@ -233,9 +229,6 @@ public class AuthService {
         );
     }
 
-    // ======================
-// 📌 إرسال لينك الموبايل فقط
-// ======================
     private void sendMobileResetEmail(Client client, String mobileResetLink) {
         emailService.sendCustomEmail(
                 client.getEmail(),
@@ -243,16 +236,15 @@ public class AuthService {
                 """
                 Dear %s,<br><br>
                 We received a request to reset your password.<br><br>
-    
+
                 📱 <a href="%s">Reset your password via Mobile</a><br><br>
-    
+
                 If you didn’t request a password reset, you can safely ignore this email.<br><br>
                 Best regards,<br>
                 Insurance System Team
                 """.formatted(client.getFullName(), mobileResetLink)
         );
     }
-
 
     public void resetPassword(String token, String newPassword) {
         String username = resetTokens.get(token);
