@@ -25,7 +25,7 @@ public class NotificationController {
     private final NotificationService notificationService;
     private final ClientRepository clientRepo;
 
-    // ➕ إرسال استفسار/إشعار يدوي
+    // إرسال استفسار/إشعار يدوي
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public void sendNotification(@RequestBody CreateNotificationManualDTO dto, Authentication auth) {
