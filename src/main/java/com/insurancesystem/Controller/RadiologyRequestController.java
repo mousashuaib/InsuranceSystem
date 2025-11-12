@@ -116,6 +116,7 @@ public class RadiologyRequestController {
     @GetMapping("/getByMember")
     @PreAuthorize("hasRole('INSURANCE_CLIENT')")
     public List<RadiologyRequestDTO> getByMember() {
+
         return radiologyService.getByMember();
     }
 
