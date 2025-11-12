@@ -93,6 +93,25 @@ public class LabRequestService {
         LabRequest saved = labRepo.save(request);
         log.info("✅ Lab request created: {}", saved.getId());
 
+        // 🔔 إشعار للمريض
+        notificationService.sendToUser(
+                member.getId(),
+                "تم إنشاء طلب فحص جديد من الدكتور " + doctor.getFullName()
+        );
+        log.info("✅ Notification sent to member");
+
+        // 🔔 إشعار لجميع فنيي المختبر
+        List<Client> labTechs = clientRepo.findByRoles_Name(RoleName.LAB_TECH);
+        for (Client labTech : labTechs) {
+            notificationService.sendToUser(
+                    labTech.getId(),
+                    "طلب فحص جديد من الدكتور " + doctor.getFullName() +
+                            " للمريض " + member.getFullName() +
+                            " - الفحص: " + test.getTestName()
+            );
+        }
+        log.info("✅ Notifications sent to {} lab technicians", labTechs.size());
+
         return labRequestMapper.toDto(saved);
     }
 
