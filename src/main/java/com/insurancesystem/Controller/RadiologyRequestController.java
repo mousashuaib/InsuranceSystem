@@ -112,7 +112,6 @@ public class RadiologyRequestController {
         return radiologyService.getAllForCurrentRadiologist(radiologistId);
     }
 
-    // 📖 Member views their radiology requests
     @GetMapping("/getByMember")
     @PreAuthorize("hasRole('INSURANCE_CLIENT')")
     public List<RadiologyRequestDTO> getByMember() {

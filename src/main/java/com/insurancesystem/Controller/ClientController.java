@@ -45,8 +45,6 @@ public class ClientController {
         return ResponseEntity.ok(clientServices.update(id, dto, universityCard));
     }
 
-
-
     @PreAuthorize("hasRole('INSURANCE_MANAGER')")
     @PatchMapping("/{id}/approve")
     public ResponseEntity<ClientDto> approve(@PathVariable UUID id) {
@@ -83,7 +81,6 @@ public class ClientController {
         return ResponseEntity.ok(updated);
     }
 
-
     @PatchMapping("/{id}/deactivate")
     public ResponseEntity<Void> deactivateClient(
             @PathVariable UUID id,
@@ -94,16 +91,10 @@ public class ClientController {
         return ResponseEntity.noContent().build();
     }
 
-
     @PreAuthorize("hasRole('INSURANCE_MANAGER')")
     @PatchMapping("/{id}/reactivate")
     public ResponseEntity<Void> reactivateClient(@PathVariable UUID id) {
         clientServices.reactivateClient(id);
         return ResponseEntity.noContent().build();
     }
-
-
-
-
-
 }
