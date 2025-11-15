@@ -1,0 +1,148 @@
+[1mdiff --git a/pom.xml b/pom.xml[m
+[1mindex 70fe644..ad43bbc 100644[m
+[1m--- a/pom.xml[m
+[1m+++ b/pom.xml[m
+[36m@@ -43,6 +43,10 @@[m
+             <artifactId>commons-io</artifactId>[m
+             <version>2.15.1</version> <!-- أو أحدث نسخة -->[m
+         </dependency>[m
+[32m+[m[32m        <dependency>[m
+[32m+[m[32m            <groupId>org.springframework.boot</groupId>[m
+[32m+[m[32m            <artifactId>spring-boot-starter-websocket</artifactId>[m
+[32m+[m[32m        </dependency>[m
+ [m
+         <dependency>[m
+             <groupId>org.springframework.boot</groupId>[m
+[1mdiff --git a/src/main/java/com/insurancesystem/Controller/AuthController.java b/src/main/java/com/insurancesystem/Controller/AuthController.java[m
+[1mindex 36523ab..bc00941 100644[m
+[1m--- a/src/main/java/com/insurancesystem/Controller/AuthController.java[m
+[1m+++ b/src/main/java/com/insurancesystem/Controller/AuthController.java[m
+[36m@@ -27,10 +27,24 @@[m [mpublic class AuthController {[m
+     public ResponseEntity<RegisterResponse> register([m
+             @RequestPart("data") String reqJson,[m
+             @RequestPart(value = "universityCard", required = false) MultipartFile universityCard) {[m
+[31m-        var out = authService.register(reqJson, universityCard);[m
+[32m+[m
+[32m+[m[32m        // تسجيل المستخدم العادي (ليس مدير)[m
+[32m+[m[32m        var out = authService.register(reqJson, universityCard, false);[m
+[32m+[m[32m        return ResponseEntity.status(HttpStatus.CREATED).body(out);[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    @PreAuthorize("hasRole('INSURANCE_MANAGER')")[m
+[32m+[m[32m    @PostMapping(value = "/admin/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)[m
+[32m+[m[32m    public ResponseEntity<RegisterResponse> registerByAdmin([m
+[32m+[m[32m            @RequestPart("data") String reqJson,[m
+[32m+[m[32m            @RequestPart(value = "universityCard", required = false) MultipartFile universityCard) {[m
+[32m+[m
+[32m+[m[32m        // تسجيل عن طريق المدير[m
+[32m+[m[32m        var out = authService.register(reqJson, universityCard, true);[m
+         return ResponseEntity.status(HttpStatus.CREATED).body(out);[m
+     }[m
+ [m
+[32m+[m
+     @PostMapping("/login")[m
+     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req) {[m
+         var out = authService.login(req);[m
+[1mdiff --git a/src/main/java/com/insurancesystem/Controller/ChatController.java b/src/main/java/com/insurancesystem/Controller/ChatController.java[m
+[1mnew file mode 100644[m
+[1mindex 0000000..80c1ad0[m
+[1m--- /dev/null[m
+[1m+++ b/src/main/java/com/insurancesystem/Controller/ChatController.java[m
+[36m@@ -0,0 +1,54 @@[m
+[32m+[m[32mpackage com.insurancesystem.Controller;[m
+[32m+[m
+[32m+[m[32mimport com.insurancesystem.Model.Dto.ConversationDTO;[m
+[32m+[m[32mimport com.insurancesystem.Model.Dto.MessageDTO;[m
+[32m+[m[32mimport com.insurancesystem.Model.Entity.Enums.RoleName;[m
+[32m+[m[32mimport com.insurancesystem.Services.ChatService;[m
+[32m+[m[32mimport com.insurancesystem.Repository.ClientRepository;[m
+[32m+[m[32mimport com.insurancesystem.Model.Entity.Client;[m
+[32m+[m[32mimport lombok.RequiredArgsConstructor;[m
+[32m+[m[32mimport org.springframework.web.bind.annotation.*;[m
+[32m+[m
+[32m+[m[32mimport java.util.List;[m
+[32m+[m[32mimport java.util.UUID;[m
+[32m+[m
+[32m+[m[32m@RestController[m
+[32m+[m[32m@RequestMapping("/api/chat")[m
+[32m+[m[32m@RequiredArgsConstructor[m
+[32m+[m[32mpublic class ChatController {[m
+[32m+[m
+[32m+[m[32m    private final ChatService chatService;[m
+[32m+[m[32m    private final ClientRepository clientRepo;[m
+[32m+[m
+[32m+[m[32m    // ✅ إرسال رسالة جديدة (HTTP) - يستخدمها React لأول رسالة[m
+[32m+[m[32m    @PostMapping("/send")[m
+[32m+[m[32m    public MessageDTO sendMessage([m
+[32m+[m[32m            @RequestParam UUID senderId,[m
+[32m+[m[32m            @RequestParam UUID receiverId,[m
+[32m+[m[32m            @RequestParam String content) {[m
+[32m+[m[32m        return chatService.sendMessage(senderId, receiverId, content);[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // ✅ جلب كل المحادثات للمستخدم الحالي[m
+[32m+[m[32m    @GetMapping("/conversations/{userId}")[m
+[32m+[m[32m    public List<ConversationDTO> getUserConversations(@PathVariable UUID userId) {[m
+[32m+[m[32m        return chatService.getUserConversations(userId);[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // ✅ جلب جميع الرسائل لمحادثة معينة[m
+[32m+[m[32m    @GetMapping("/messages/{conversationId}")[m
+[32m+[m[32m    public List<MessageDTO> getMessages(@PathVariable UUID conversationId) {[m
+[32m+[m[32m        return chatService.getMessages(conversationId);[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // ✅ جلب قائمة المستخدمين الآخرين لبدء دردشة جديدة[m
+[32m+[m[32m    @GetMapping("/users")[m
+[32m+[m[32m    public List<Client> getAllUsersExceptCurrent(@RequestParam UUID currentUserId) {[m
+[32m+[m[32m        return clientRepo.findAll()[m
+[32m+[m[32m                .stream()[m
+[32m+[m[32m                .filter(u -> !u.getId().equals(currentUserId))[m
+[32m+[m[32m                .filter(u -> !u.hasRole(RoleName.INSURANCE_CLIENT)) // 🚫 استبعاد العملاء[m
+[32m+[m[32m                .toList();[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/main/java/com/insurancesystem/Controller/ChatSocketController.java b/src/main/java/com/insurancesystem/Controller/ChatSocketController.java[m
+[1mnew file mode 100644[m
+[1mindex 0000000..960e4b2[m
+[1m--- /dev/null[m
+[1m+++ b/src/main/java/com/insurancesystem/Controller/ChatSocketController.java[m
+[36m@@ -0,0 +1,32 @@[m
+[32m+[m[32mpackage com.insurancesystem.Controller;[m
+[32m+[m
+[32m+[m[32mimport com.insurancesystem.Model.Dto.MessageDTO;[m
+[32m+[m[32mimport com.insurancesystem.Services.ChatService;[m
+[32m+[m[32mimport lombok.RequiredArgsConstructor;[m
+[32m+[m[32mimport org.springframework.messaging.handler.annotation.MessageMapping;[m
+[32m+[m[32mimport org.springframework.messaging.handler.annotation.Payload;[m
+[32m+[m[32mimport org.springframework.messaging.simp.SimpMessagingTemplate;[m
+[32m+[m[32mimport org.springframework.stereotype.Controller;[m
+[32m+[m
+[32m+[m[32m@Controller[m
+[32m+[m[32m@RequiredArgsConstructor[m
+[32m+[m[32mpublic class ChatSocketController {[m
+[32m+[m
+[32m+[m[32m    private final ChatService chatService;[m
+[32m+[m[32m    private final SimpMessagingTemplate messagingTemplate;[m
+[32m+[m
+[32m+[m[32m    @MessageMapping("/chat.sendPrivateMessage")[m
+[32m+[m[32m    public void handlePrivateMessage(@Payload MessageDTO messageDTO) {[m
+[32m+[m[32m        MessageDTO saved = chatService.sendMessage([m
+[32m+[m[32m                messageDTO.getSenderId(),[m
+[32m+[m[32m                messageDTO.getReceiverId(),[m
+[32m+[m[32m                messageDTO.getContent()[m
+[32m+[m[32m        );[m
+[32m+[m
+[32m+[m[32m        // إرسال الرسالة للطرفين[m
+[32m+[m[32m        messagingTemplate.convertAndSendToUser([m
+[32m+[m[32m                saved.getReceiverId().toString(), "/queue/messages", saved);[m
+[32m+[m[32m        messagingTemplate.convertAndSendToUser([m
+[32m+[m[32m                saved.getSenderId().toString(), "/queue/messages", saved);[m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/main/java/com/insurancesystem/Controller/ClaimController.java b/src/main/java/com/insurancesystem/Controller/ClaimController.java[m
+[1mindex b6ee48a..4c92bad 100644[m
+[1m--- a/src/main/java/com/insurancesystem/Controller/ClaimController.java[m
+[1m+++ b/src/main/java/com/insurancesystem/Controller/ClaimController.java[m
+[36m@@ -2,10 +2,9 @@[m [mpackage com.insurancesystem.Co

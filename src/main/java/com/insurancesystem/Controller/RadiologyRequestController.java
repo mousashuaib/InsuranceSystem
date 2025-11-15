@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/radiologist")
+@RequestMapping("/api/radiology")
 @RequiredArgsConstructor
 public class RadiologyRequestController {
 
@@ -40,8 +40,8 @@ public class RadiologyRequestController {
         return radiologyService.getPendingRequests(radiologistId);
     }
 
-    // 🧪 Radiologist uploads radiology result
-    @PatchMapping("/{id}/upload-result")
+    // 🧪 Radiologist uploads radiology result with test name and price
+    @PatchMapping("/{id}/uploadResult")
     @PreAuthorize("hasRole('RADIOLOGIST')")
     public RadiologyRequestDTO uploadRadiologyResult(
             @PathVariable UUID id,
@@ -112,17 +112,16 @@ public class RadiologyRequestController {
         return radiologyService.getAllForCurrentRadiologist(radiologistId);
     }
 
+    // 📖 Member views their radiology requests
     @GetMapping("/getByMember")
     @PreAuthorize("hasRole('INSURANCE_CLIENT')")
     public List<RadiologyRequestDTO> getByMember() {
-
         return radiologyService.getByMember();
     }
 
     // 📖 Get all radiologists
     @GetMapping("/radiologists")
-    @PreAuthorize("hasAnyRole('ADMIN','INSURANCE_MANAGER','DOCTOR')")
-
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','DOCTOR')")
     public List<ClientDto> getAllRadiologists() {
         return radiologyService.getAllRadiologists();
     }

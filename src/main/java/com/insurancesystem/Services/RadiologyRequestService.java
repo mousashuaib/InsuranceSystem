@@ -122,7 +122,6 @@ public class RadiologyRequestService {
         Client radiologist = clientRepository.findByUsername(currentUsername)
                 .orElseThrow(() -> new NotFoundException("Radiologist not found"));
 
-
         RadiologyRequest request = radiologyRequestRepository.findById(requestId)
                 .orElseThrow(() -> new NotFoundException("Radiology request not found"));
 
