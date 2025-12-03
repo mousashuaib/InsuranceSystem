@@ -6,19 +6,15 @@ import com.insurancesystem.Model.Dto.UpdateCoverageDTO;
 import com.insurancesystem.Model.Entity.Coverage;
 import org.mapstruct.*;
 
-@Mapper(config = MapStructConfig.class)
+@Mapper(componentModel = "spring")
 public interface CoverageMapper {
 
-    // Entity -> DTO (policyId بدل كائن Policy)
-    @Mapping(target = "policyId", source = "policy.id")
-    CoverageDTO toDTO(Coverage coverage);
-
-    // Create DTO -> Entity (policy يُضبط في الخدمة)
-    @Mapping(target = "policy", ignore = true)
+    @Mapping(source = "policyId", target = "policy.id")
     Coverage toEntity(CreateCoverageDTO dto);
 
-    // Update جزئي
-    @BeanMapping(ignoreByDefault = false)
-    @Mapping(target = "policy", ignore = true)
+    @Mapping(source = "policy.id", target = "policyId")
+    CoverageDTO toDTO(Coverage entity);
+
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void updateEntityFromDTO(UpdateCoverageDTO dto, @MappingTarget Coverage entity);
 }

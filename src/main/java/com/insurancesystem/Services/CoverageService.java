@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
-
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -35,6 +34,15 @@ public class CoverageService {
 
         Coverage entity = coverageMapper.toEntity(dto);
         entity.setPolicy(policy);
+
+        return coverageMapper.toDTO(coverageRepo.save(entity));
+    }
+
+    public CoverageDTO update(UUID id, UpdateCoverageDTO dto) {
+        Coverage entity = coverageRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Coverage not found"));
+
+        coverageMapper.updateEntityFromDTO(dto, entity);
         return coverageMapper.toDTO(coverageRepo.save(entity));
     }
 
@@ -42,18 +50,16 @@ public class CoverageService {
     public List<CoverageDTO> listByPolicy(UUID policyId) {
         Policy policy = policyRepo.findById(policyId)
                 .orElseThrow(() -> new NotFoundException("Policy not found"));
-        return coverageRepo.findByPolicy(policy).stream().map(coverageMapper::toDTO).toList();
-    }
 
-    public CoverageDTO update(UUID id, UpdateCoverageDTO dto) {
-        Coverage entity = coverageRepo.findById(id)
-                .orElseThrow(() -> new NotFoundException("Coverage not found"));
-        coverageMapper.updateEntityFromDTO(dto, entity);
-        return coverageMapper.toDTO(coverageRepo.save(entity));
+        return coverageRepo.findByPolicy(policy)
+                .stream().map(coverageMapper::toDTO)
+                .toList();
     }
 
     public void delete(UUID id) {
-        if (!coverageRepo.existsById(id)) throw new NotFoundException("Coverage not found");
+        if (!coverageRepo.existsById(id))
+            throw new NotFoundException("Coverage not found");
+
         coverageRepo.deleteById(id);
     }
 }

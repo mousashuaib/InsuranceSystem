@@ -1,19 +1,25 @@
 package com.insurancesystem.Model.Dto;
 
-import jakarta.validation.constraints.*;
-import lombok.*;
+import com.insurancesystem.Model.Entity.Enums.CoverageType;
+import lombok.Data;
 
 import java.math.BigDecimal;
 
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Data
 public class UpdateCoverageDTO {
-    @Size(max = 160)
-    private String serviceName;
 
+    private String serviceName;
     private String description;
 
-    @DecimalMin(value = "0.00")
     private BigDecimal amount;
+    private boolean emergencyEligible;
+    private boolean covered;
+    private BigDecimal coveragePercent;
+    private BigDecimal maxLimit;
 
-    private Boolean emergencyEligible;
+    private CoverageType coverageType;
+
+    private BigDecimal minimumDeductible;
+
+    private boolean requiresReferral;
 }

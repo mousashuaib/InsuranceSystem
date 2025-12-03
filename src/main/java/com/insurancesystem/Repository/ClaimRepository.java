@@ -22,9 +22,9 @@ public interface ClaimRepository extends JpaRepository<Claim, UUID> {
     @Query("SELECT c FROM Claim c WHERE c.status = 'PENDING'")
     List<Claim> findPendingMedicalClaims();
 
-    // 🧾 استرجاع المطالبات بانتظار المراجعة الإدارية
-    @Query("SELECT c FROM Claim c WHERE c.status = 'AWAITING_ADMIN_REVIEW'")
+    @Query("SELECT c FROM Claim c WHERE c.status = 'APPROVED_BY_MEDICAL' OR c.status = 'AWAITING_ADMIN_REVIEW'")
     List<Claim> findPendingAdminClaims();
+
 
     // مجموع المبالغ للمطالبات الموافق عليها
     @Query("SELECT COALESCE(SUM(c.amount),0) FROM Claim c WHERE c.status = 'APPROVED'")

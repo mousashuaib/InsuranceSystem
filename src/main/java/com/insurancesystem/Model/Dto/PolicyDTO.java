@@ -6,6 +6,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
@@ -22,4 +23,7 @@ public class PolicyDTO {
     private String emergencyRules;
     private Instant createdAt;
     private Instant updatedAt;
+
+    private List<CoverageDTO> coverages;
+
 }

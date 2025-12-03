@@ -1,26 +1,29 @@
 package com.insurancesystem.Model.Dto;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.validation.constraints.*;
-import lombok.*;
+import com.insurancesystem.Model.Entity.Enums.CoverageType;
+import lombok.Data;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Data
 public class CreateCoverageDTO {
 
-    @JsonIgnore              // اختياري: عشان ما يبعثه العميل أصلاً
     private UUID policyId;
 
-    @NotBlank @Size(max = 160)
     private String serviceName;
-
     private String description;
 
-    @NotNull @DecimalMin(value = "0.00")
-    private BigDecimal amount;
+    private BigDecimal amount = BigDecimal.ZERO;
+    private boolean emergencyEligible = false;
+    private boolean covered = true;
+    private BigDecimal coveragePercent = BigDecimal.valueOf(100);
 
-    @NotNull
-    private Boolean emergencyEligible;
+    private BigDecimal maxLimit = BigDecimal.ZERO;
+
+    private CoverageType coverageType = CoverageType.OUTPATIENT;
+
+    private BigDecimal minimumDeductible = BigDecimal.ZERO;
+
+    private boolean requiresReferral = false;
 }

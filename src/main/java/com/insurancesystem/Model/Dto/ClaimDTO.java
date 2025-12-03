@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -22,7 +23,7 @@ public class ClaimDTO {
     private String providerName;
     private String doctorName;
     private ClaimStatus status;
-    private String invoiceImagePath;
+    private List<String> invoiceImagePath;
     private Instant submittedAt;
     private Instant approvedAt;
     private Instant rejectedAt;
@@ -31,6 +32,13 @@ public class ClaimDTO {
     private String adminReviewerName;
     private Instant medicalReviewedAt;
     private Instant adminReviewedAt;
+    private Boolean emergency;
 
+    private Boolean isCovered;
+    private String coverageMessage;
+    private Double insuranceCoveredAmount;
+    private Double clientPayAmount;
+    private Double coveragePercentUsed;
+    private Double maxCoverageUsed;
 
 }

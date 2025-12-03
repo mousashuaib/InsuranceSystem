@@ -16,4 +16,7 @@ public class CreateClaimDTO {
     private LocalDate serviceDate;
     private String providerName;
     private String doctorName;
+    private String serviceName;
+    private Boolean emergency;
+
 }
