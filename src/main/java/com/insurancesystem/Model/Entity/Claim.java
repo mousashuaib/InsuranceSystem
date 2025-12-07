@@ -24,6 +24,8 @@ public class Claim {
     @GeneratedValue
     private UUID id;
 
+    private String memberName;
+
     @ManyToOne(optional = false)
     @JoinColumn(name = "member_id")
     private Client member;

@@ -7,24 +7,38 @@ import org.mapstruct.*;
 @Mapper(componentModel = "spring")
 public interface LabRequestMapper {
 
-    // ✅ Entity → DTO
+    // ----------------------------
+    // 🔹 ENTITY → DTO
+    // ----------------------------
     @Mapping(source = "doctor.id", target = "doctorId")
     @Mapping(source = "doctor.fullName", target = "doctorName")
+
     @Mapping(source = "member.id", target = "memberId")
     @Mapping(source = "member.fullName", target = "memberName")
+
     @Mapping(source = "labTech.id", target = "labTechId")
     @Mapping(source = "labTech.fullName", target = "labTechName")
+
+    // 🟢 PriceList fields
     @Mapping(source = "test.id", target = "testId")
-    @Mapping(source = "test.testName", target = "testName_test")
-    @Mapping(source = "test.unionPrice", target = "unionPrice")
+    @Mapping(source = "test.serviceName", target = "serviceName")
+    @Mapping(source = "test.price", target = "unionPrice")
+
     LabRequestDTO toDto(LabRequest request);
 
-    // ✅ DTO → Entity
-    @Mapping(source = "memberId", target = "member.id")
+    // ----------------------------
+    // 🔹 DTO → ENTITY
+    // ----------------------------
+    // ملاحظة: سيتم حقن doctor, member, test في Service يدويًا
     @Mapping(target = "doctor", ignore = true)
-    @Mapping(target = "labTech", ignore = true)
     @Mapping(target = "member", ignore = true)
+    @Mapping(target = "labTech", ignore = true)
     @Mapping(target = "test", ignore = true)
-    LabRequest toEntity(LabRequestDTO dto);
 
+    // سيتم ملؤها في الـ service
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+
+    LabRequest toEntity(LabRequestDTO dto);
 }

@@ -122,6 +122,7 @@ public class ClientController {
             ClientDto clientDto = clientServices.findByEmployeeId(employeeId);
 
             Map<String, Object> response = new HashMap<>();
+            response.put("id", clientDto.getId());
             response.put("fullName", clientDto.getFullName());
             response.put("department", clientDto.getDepartment());
             response.put("faculty", clientDto.getFaculty());

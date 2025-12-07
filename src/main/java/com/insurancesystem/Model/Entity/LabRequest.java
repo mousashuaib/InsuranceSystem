@@ -40,8 +40,8 @@ public class LabRequest {
 
     // 🟢 علاقة مع جدول الفحصوات
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "test_id")
-    private Test test;
+    @JoinColumn(name = "price_id")
+    private PriceList test;
 
     private Double enteredPrice; // السعر الذي دخله اللاب تِك
     private Double approvedPrice; // السعر المعتمد (الأقل من النقابي)

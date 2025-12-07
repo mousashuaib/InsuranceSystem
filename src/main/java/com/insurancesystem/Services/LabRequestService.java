@@ -8,12 +8,12 @@ import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.Entity.Enums.LabRequestStatus;
 import com.insurancesystem.Model.Entity.Enums.RoleName;
 import com.insurancesystem.Model.Entity.LabRequest;
-import com.insurancesystem.Model.Entity.Test;
+import com.insurancesystem.Model.Entity.PriceList;
 import com.insurancesystem.Model.MapStruct.ClientMapper;
 import com.insurancesystem.Model.MapStruct.LabRequestMapper;
 import com.insurancesystem.Repository.ClientRepository;
 import com.insurancesystem.Repository.LabRequestRepository;
-import com.insurancesystem.Repository.TestRepository;
+import com.insurancesystem.Repository.PriceListRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -35,11 +35,12 @@ import java.util.stream.Collectors;
 public class LabRequestService {
 
     private final LabRequestRepository labRepo;
-    private final TestRepository testRepository;
     private final ClientRepository clientRepo;
     private final LabRequestMapper labRequestMapper;
     private final ClientMapper clientMapper;
     private final NotificationService notificationService;
+    private final PriceListRepository priceListRepository;
+
 
     // ➕ Doctor ينشئ طلب فحص
     @Transactional
@@ -72,26 +73,18 @@ public class LabRequestService {
         log.info("✅ Member found: {}", member.getFullName());
 
         // 🧪 الفحص
-        Test test;
+        PriceList test = priceListRepository.findById(dto.getTestId())
+                .orElseThrow(() -> new NotFoundException("Test not found"));
 
-        if (dto.getTestId() != null) {
-            test = testRepository.findById(dto.getTestId())
-                    .orElseThrow(() -> new NotFoundException("Test not found"));
-        } else if (dto.getTestName_test() != null && !dto.getTestName_test().isBlank()) {
-            test = testRepository.findByTestName(dto.getTestName_test())
-                    .orElseThrow(() -> new NotFoundException("Test not found with name: " + dto.getTestName_test()));
-        } else {
-            throw new RuntimeException("Test info required");
-        }
 
-        log.info("✅ Test found: {} (Union Price: {})", test.getTestName(), test.getUnionPrice());
+        log.info("✅ Test found: {} (Union Price: {})", test.getServiceName(), test.getPrice());
 
         // 📝 بناء الطلب
         LabRequest request = labRequestMapper.toEntity(dto);
         request.setDoctor(doctor);
         request.setMember(member);
         request.setTest(test);
-        request.setTestName(test.getTestName());
+        request.setTestName(test.getServiceName());
         request.setStatus(LabRequestStatus.PENDING);
         request.setCreatedAt(Instant.now());
         request.setUpdatedAt(Instant.now());
@@ -116,7 +109,7 @@ public class LabRequestService {
                     labTech.getId(),
                     "طلب فحص جديد من الدكتور " + doctor.getFullName() +
                             " للمريض " + member.getFullName() +
-                            " - الفحص: " + test.getTestName()
+                            " - الفحص: " + test.getServiceName()
             );
         }
 
@@ -197,21 +190,21 @@ public class LabRequestService {
             request.setEnteredPrice(enteredPrice);
 
             // 🟢 حساب السعر المعتمد
-            Double unionPrice = request.getTest().getUnionPrice();
+            // 🟢 حساب السعر المعتمد
+            Double unionPrice = request.getTest().getPrice(); // ← السعر النقابي من PriceList
             Double approvedPrice;
 
             if (enteredPrice < unionPrice) {
                 approvedPrice = enteredPrice;
-                log.info("✅ Entered price ({}) is less than union price ({}), approved", enteredPrice, unionPrice);
             } else {
                 approvedPrice = unionPrice;
-                log.info("⚠️ Entered price ({}) is >= union price ({}), using union price", enteredPrice, unionPrice);
             }
 
             request.setApprovedPrice(approvedPrice);
             request.setStatus(LabRequestStatus.COMPLETED);
             request.setLabTech(labTech);
             request.setUpdatedAt(Instant.now());
+
 
         } catch (Exception e) {
             log.error("❌ Failed to upload file: {}", e.getMessage());
@@ -225,7 +218,7 @@ public class LabRequestService {
         // 🔔 إشعار للمريض بإكمال الفحص
         notificationService.sendToUser(
                 saved.getMember().getId(),
-                "✅ تم إكمال فحص " + saved.getTest().getTestName() +
+                "✅ تم إكمال فحص " + saved.getTest().getServiceName() +
                         " - السعر: " + saved.getApprovedPrice() + " دينار ردني"
         );
 
@@ -234,7 +227,7 @@ public class LabRequestService {
         // 🔔 إشعار للطبيب بإكمال الفحص
         notificationService.sendToUser(
                 saved.getDoctor().getId(),
-                "✅ تم إكمال فحص " + saved.getTest().getTestName() +
+                "✅ تم إكمال فحص " + saved.getTest().getServiceName() +
                         " للمريض " + saved.getMember().getFullName()
 
         );

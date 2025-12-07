@@ -14,7 +14,7 @@ public class LabRequestDTO {
 
     private UUID id;
 
-    private String testName;
+    private String testName; // اسم الفحص داخل الطلب
 
     private String notes;
 
@@ -31,15 +31,16 @@ public class LabRequestDTO {
     private UUID labTechId;
     private String labTechName;
 
-    // 🟢 الفحص
+    // 🟢 الفحص من PriceList
     private UUID testId;
-    private String testName_test; // اسم الفحص من جدول tests
-    private Double unionPrice; // السعر النقابي
+    private String serviceName; // اسم الفحص من PriceList (بدل testName_test)
+    private Double unionPrice;  // الآن = price من PriceList
 
     // 🟢 الأسعار
-    private Double enteredPrice; // السعر الذي دخله اللاب تِك
-    private Double approvedPrice; // السعر المعتمد النهائي
+    private Double enteredPrice;
+    private Double approvedPrice;
 
+    // 📊 الإحصائيات
     private long total;
     private long pending;
     private long completed;

@@ -7,6 +7,7 @@ import java.util.UUID;
 
 @Data
 public class CreateClaimDTO {
+    private UUID memberId;     // 🔥 المريض الحقيقي
     private UUID policyId;
     private String policyName; // ✅ اسم البوليصة
     private String description;

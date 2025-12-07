@@ -46,6 +46,7 @@ public class ClaimService {
         Claim claim = claimMapper.toEntity(dto);
 
         claim.setMember(member);
+        claim.setMemberName(member.getFullName());
         claim.setPolicy(policy);
         claim.setStatus(ClaimStatus.PENDING);
 

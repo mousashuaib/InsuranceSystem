@@ -50,8 +50,9 @@ public class ClaimController {
 
         // إنشاء مطالبة جديدة
         return ResponseEntity.ok(
-                claimService.createClaim(client.getId(), dto, invoiceImage)
+                claimService.createClaim(dto.getMemberId(), dto, invoiceImage)
         );
+
     }
 
     // ============================================================

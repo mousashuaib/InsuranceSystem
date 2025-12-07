@@ -6,7 +6,6 @@ import lombok.*;
 
 import java.time.Instant;
 import java.util.UUID;
-
 @Entity
 @Table(name = "radiology_requests")
 @Getter
@@ -20,12 +19,11 @@ public class RadiologyRequest {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(nullable = false)
-    private String testName; // اسم الفحص الإشعاعي (يدخله الراديولوجي أو الدكتور)
+    private String notes;
+    private String resultUrl;
 
-    private String notes; // ملاحظات من الطبيب
-
-    private String resultUrl; // رابط أو مسار ملف النتيجة
+    @Column(nullable = true)
+    private String testName;
 
     @Enumerated(EnumType.STRING)
     private LabRequestStatus status;
@@ -38,14 +36,30 @@ public class RadiologyRequest {
     @JoinColumn(name = "member_id", nullable = false)
     private Client member;
 
-    // 🟢 الأسعار (يدخلها الراديولوجي مباشرة)
-    private Double enteredPrice; // السعر الذي يدخله الراديولوجي
+    // 🆕 ربط الأشعة مع PriceList
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "price_id")
+    private PriceList test;
 
-    private Instant createdAt;
-    private Instant updatedAt;
+    private Double enteredPrice;
+    private Double approvedPrice; // 🆕 السعر المعتمد
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "radiologist_id")
     private Client radiologist;
 
+    private Instant createdAt;
+    private Instant updatedAt;
+
+    @PrePersist
+    void onCreate() {
+        Instant now = Instant.now();
+        createdAt = now;
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = Instant.now();
+    }
 }

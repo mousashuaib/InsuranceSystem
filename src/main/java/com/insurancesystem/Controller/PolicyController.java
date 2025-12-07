@@ -51,7 +51,7 @@ public class PolicyController {
         return ResponseEntity.ok(policyService.get(id));
     }
 
-    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER', 'INSURANCE_CLIENT')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER', 'INSURANCE_CLIENT' , 'DOCTOR')")
     @GetMapping("/getByClientId/{userId}")
     public ResponseEntity<PolicyDTO> getByUserId(@PathVariable UUID userId) {
         return ResponseEntity.ok(policyService.getPolicyByUserId(userId));
