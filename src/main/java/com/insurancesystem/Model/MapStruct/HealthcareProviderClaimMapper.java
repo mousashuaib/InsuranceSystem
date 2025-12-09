@@ -2,32 +2,43 @@ package com.insurancesystem.Model.MapStruct;
 
 import com.insurancesystem.Model.Dto.HealthcareProviderClaimDTO;
 import com.insurancesystem.Model.Dto.CreateHealthcareProviderClaimDTO;
+import com.insurancesystem.Model.Dto.HealthcareProviderClaimMedicalDTO;
 import com.insurancesystem.Model.Entity.HealthcareProviderClaim;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
+import org.mapstruct.*;
 
 @Mapper(componentModel = "spring")
 public interface HealthcareProviderClaimMapper {
 
-    // Entity → DTO
-    @Mapping(source = "healthcareProvider.id", target = "providerId")
-    @Mapping(source = "healthcareProvider.fullName", target = "providerName")
-    @Mapping(source = "clientName", target = "clientName")
-    @Mapping(source = "clientId", target = "clientId")
-    HealthcareProviderClaimDTO toDto(HealthcareProviderClaim entity);
-
-    // CreateDTO → Entity
+    // CREATE → ENTITY
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "healthcareProvider", ignore = true)
-    @Mapping(target = "clientName", ignore = true)
     @Mapping(target = "status", ignore = true)
-    @Mapping(target = "submittedAt", ignore = true)
+    @Mapping(target = "invoiceImagePath", ignore = true)
     @Mapping(target = "approvedAt", ignore = true)
     @Mapping(target = "rejectedAt", ignore = true)
     @Mapping(target = "rejectionReason", ignore = true)
-    @Mapping(target = "invoiceImagePath", ignore = true)
-    @Mapping(target = "clientId", source = "clientId")
-    @Mapping(target = "roleSpecificData", source = "roleSpecificData")
+    @Mapping(source = "diagnosis", target = "diagnosis")
+    @Mapping(source = "treatmentDetails", target = "treatmentDetails")
+    @Mapping(target = "submittedAt", expression = "java(java.time.Instant.now())")
     HealthcareProviderClaim toEntity(CreateHealthcareProviderClaimDTO dto);
-}
 
+
+    // BASIC DTO
+    @Mapping(source = "healthcareProvider.id", target = "providerId")
+    @Mapping(source = "healthcareProvider.fullName", target = "providerName")
+    @Mapping(source = "diagnosis", target = "diagnosis")
+    @Mapping(source = "treatmentDetails", target = "treatmentDetails")
+    HealthcareProviderClaimDTO toDto(HealthcareProviderClaim claim);
+
+
+    // MEDICAL REVIEW DTO
+    @Mapping(source = "healthcareProvider.id", target = "providerId")
+    @Mapping(source = "healthcareProvider.fullName", target = "providerName")
+    @Mapping(source = "diagnosis", target = "diagnosis")
+    @Mapping(source = "treatmentDetails", target = "treatmentDetails")
+    @Mapping(source = "description", target = "description")
+    @Mapping(source = "serviceDate", target = "serviceDate")
+    @Mapping(source = "invoiceImagePath", target = "invoiceImagePath")
+    @Mapping(source = "clientId", target = "clientId")
+    HealthcareProviderClaimMedicalDTO toMedicalDto(HealthcareProviderClaim claim);
+}

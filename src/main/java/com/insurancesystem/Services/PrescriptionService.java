@@ -82,11 +82,13 @@ public class PrescriptionService {
                 .doctor(doctor)
                 .member(member)
                 .status(PrescriptionStatus.PENDING)
-                .notes(dto.getNotes())
+                .diagnosis(dto.getDiagnosis())   // NEW
+                .treatment(dto.getTreatment())   // NEW
                 .totalPrice(0.0)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
+
 
         prescriptionRepo.save(prescription);
 
@@ -224,7 +226,8 @@ public class PrescriptionService {
             throw new IllegalStateException("CANNOT_UPDATE_NON_PENDING");
         }
 
-        prescription.setNotes(dto.getNotes());
+        prescription.setDiagnosis(dto.getDiagnosis());
+        prescription.setTreatment(dto.getTreatment());
         prescription.setUpdatedAt(Instant.now());
 
         prescriptionItemRepo.deleteAll(prescription.getItems());

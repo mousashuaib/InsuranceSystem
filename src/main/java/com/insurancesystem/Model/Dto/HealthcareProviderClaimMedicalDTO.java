@@ -5,26 +5,34 @@ import lombok.Data;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
-
 @Data
-public class HealthcareProviderClaimDTO {
+public class HealthcareProviderClaimMedicalDTO {
+
     private UUID id;
-    private UUID providerId;
-    private String providerName;
+
+    // === Patient Info ===
     private UUID clientId;
     private String clientName;
-    private String description;
-    private Double amount;
+
+    // === Provider Info ===
+    private UUID providerId;
+    private String providerName;
+    private String providerRole; // DOCTOR / LAB_TECH / PHARMACIST / RADIOLOGIST
+
+    // === Medical Info ===
     private String diagnosis;
     private String treatmentDetails;
+    private String description;
     private LocalDate serviceDate;
-    private String roleSpecificData;
-    private ClaimStatus status;
+
+    // === Files ===
     private String invoiceImagePath;
+
+    private ClaimStatus status;
     private Instant submittedAt;
     private Instant approvedAt;
     private Instant rejectedAt;
     private String rejectionReason;
 }
-

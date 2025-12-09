@@ -3,6 +3,7 @@ package com.insurancesystem.Services;
 import com.insurancesystem.Exception.NotFoundException;
 import com.insurancesystem.Model.Dto.HealthcareProviderClaimDTO;
 import com.insurancesystem.Model.Dto.CreateHealthcareProviderClaimDTO;
+import com.insurancesystem.Model.Dto.HealthcareProviderClaimMedicalDTO;
 import com.insurancesystem.Model.Dto.RejectClaimDTO;
 import com.insurancesystem.Model.Entity.HealthcareProviderClaim;
 import com.insurancesystem.Model.Entity.Client;
@@ -39,7 +40,7 @@ public class HealthcareProviderClaimService {
 
         HealthcareProviderClaim claim = claimMapper.toEntity(dto);
         claim.setHealthcareProvider(provider);
-        claim.setStatus(ClaimStatus.PENDING);
+        claim.setStatus(ClaimStatus.PENDING_MEDICAL);
 
         // ✅ حفظ معرف واسم المريض
         if (claim.getClientId() != null) {
@@ -57,9 +58,8 @@ public class HealthcareProviderClaimService {
 
         // إشعار المدير
         notificationService.sendToRole(
-                RoleName.INSURANCE_MANAGER,
-                "مطالبة جديدة من " + provider.getFullName() +
-                        " بمبلغ " + dto.getAmount()
+                RoleName.MEDICAL_ADMIN,
+                "مطالبة جديدة من " + provider.getFullName()
         );
 
         return claimMapper.toDto(claim);
@@ -117,10 +117,13 @@ public class HealthcareProviderClaimService {
         return claimMapper.toDto(claim);
     }
 
-    // موافقة على مطالبة
     public HealthcareProviderClaimDTO approveClaim(UUID claimId) {
+
         HealthcareProviderClaim claim = claimRepo.findById(claimId)
                 .orElseThrow(() -> new NotFoundException("Claim not found"));
+
+        if (claim.getStatus() != ClaimStatus.AWAITING_ADMIN_REVIEW)
+            throw new NotFoundException("Medical approval required first");
 
         claim.setStatus(ClaimStatus.APPROVED);
         claim.setApprovedAt(Instant.now());
@@ -128,11 +131,12 @@ public class HealthcareProviderClaimService {
 
         notificationService.sendToUser(
                 claim.getHealthcareProvider().getId(),
-                "تمت الموافقة على مطالبتك بمبلغ " + claim.getAmount()
+                "تمت الموافقة على مطالبتك."
         );
 
         return claimMapper.toDto(claim);
     }
+
 
     // رفض مطالبة
     public HealthcareProviderClaimDTO rejectClaim(UUID claimId, RejectClaimDTO dto) {
@@ -163,5 +167,73 @@ public class HealthcareProviderClaimService {
             throw new RuntimeException("Failed to save document", e);
         }
     }
+
+    public List<HealthcareProviderClaimMedicalDTO> getClaimsForMedicalReview() {
+
+        List<HealthcareProviderClaim> claims =
+                claimRepo.findByStatus(ClaimStatus.PENDING_MEDICAL);
+
+        return claims.stream().map(claim -> {
+            HealthcareProviderClaimMedicalDTO dto = claimMapper.toMedicalDto(claim);
+
+            // ⭐ إضافة التشخيص والعلاج (مهم!)
+            dto.setDiagnosis(claim.getDiagnosis());
+            dto.setTreatmentDetails(claim.getTreatmentDetails());
+
+            // تعبئة clientName
+            if (claim.getClientId() != null) {
+                clientRepo.findById(claim.getClientId()).ifPresent(client ->
+                        dto.setClientName(client.getFullName())
+                );
+            }
+
+            // تعبئة Provider Role
+            String role = claim.getHealthcareProvider()
+                    .getRoles()
+                    .stream()
+                    .findFirst()
+                    .map(r -> r.getName().name())
+                    .orElse("UNKNOWN");
+
+            dto.setProviderRole(role);
+
+            return dto;
+        }).toList();
+    }
+
+
+
+    public HealthcareProviderClaimDTO rejectMedical(UUID claimId, String reason, UUID reviewerId) {
+        HealthcareProviderClaim claim = claimRepo.findById(claimId)
+                .orElseThrow(() -> new NotFoundException("Claim not found"));
+
+        if (claim.getStatus() != ClaimStatus.PENDING_MEDICAL)
+            throw new NotFoundException("Already processed");
+
+        claim.setStatus(ClaimStatus.REJECTED_BY_MEDICAL);
+        claim.setRejectedAt(Instant.now());
+        claim.setRejectionReason(reason);
+
+        claimRepo.save(claim);
+
+        return claimMapper.toDto(claim);
+    }
+
+
+    public HealthcareProviderClaimDTO approveMedical(UUID claimId, UUID reviewerId) {
+        HealthcareProviderClaim claim = claimRepo.findById(claimId)
+                .orElseThrow(() -> new NotFoundException("Claim not found"));
+
+        if (claim.getStatus() != ClaimStatus.PENDING_MEDICAL)
+            throw new NotFoundException("Already processed");
+
+        claim.setStatus(ClaimStatus.AWAITING_ADMIN_REVIEW);
+        claim.setApprovedAt(Instant.now());
+
+        claimRepo.save(claim);
+
+        return claimMapper.toDto(claim);
+    }
+
 }
 

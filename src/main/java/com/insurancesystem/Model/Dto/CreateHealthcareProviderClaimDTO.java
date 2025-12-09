@@ -12,5 +12,8 @@ public class CreateHealthcareProviderClaimDTO {
     private Double amount;
     private LocalDate serviceDate;
     private String roleSpecificData; // JSON: medicines, testResults, imaging, etc
+
+    private String diagnosis;         // NEW
+    private String treatmentDetails;  // NEW
 }
 

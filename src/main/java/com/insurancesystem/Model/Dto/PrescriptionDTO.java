@@ -18,6 +18,8 @@ public class PrescriptionDTO {
 
     // الحالة
     private String status;
+    private String diagnosis;
+    private String treatment;
 
     // الأشخاص المعنيين
     private UUID memberId;

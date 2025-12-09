@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.insurancesystem.Exception.NotFoundException;
 import com.insurancesystem.Model.Dto.HealthcareProviderClaimDTO;
 import com.insurancesystem.Model.Dto.CreateHealthcareProviderClaimDTO;
+import com.insurancesystem.Model.Dto.HealthcareProviderClaimMedicalDTO;
 import com.insurancesystem.Model.Dto.RejectClaimDTO;
 import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Repository.ClientRepository;
@@ -162,5 +163,42 @@ public class HealthcareProviderClaimController {
             return ResponseEntity.status(404).body(null);
         }
     }
+    @PreAuthorize("hasAuthority('ROLE_MEDICAL_ADMIN')")
+    @PatchMapping("/{id}/reject-medical")
+    public ResponseEntity<HealthcareProviderClaimDTO> rejectMedical(
+            @PathVariable UUID id,
+            @RequestBody RejectClaimDTO dto,
+            Authentication auth) {
+
+        Client reviewer = clientRepo.findByUsername(auth.getName())
+                .orElseThrow(() -> new NotFoundException("Reviewer not found"));
+
+        return ResponseEntity.ok(
+                claimService.rejectMedical(id, dto.getReason(), reviewer.getId())
+        );
+    }
+
+
+    @PreAuthorize("hasAuthority('ROLE_MEDICAL_ADMIN')")
+    @GetMapping("/medical-review")
+    public ResponseEntity<List<HealthcareProviderClaimMedicalDTO>> getMedicalReviewClaims() {
+        return ResponseEntity.ok(claimService.getClaimsForMedicalReview());
+    }
+
+
+    @PreAuthorize("hasAuthority('ROLE_MEDICAL_ADMIN')")
+    @PatchMapping("/{id}/approve-medical")
+    public ResponseEntity<HealthcareProviderClaimDTO> approveMedical(
+            @PathVariable UUID id,
+            Authentication auth) {
+
+        Client reviewer = clientRepo.findByUsername(auth.getName())
+                .orElseThrow(() -> new NotFoundException("Reviewer not found"));
+
+        return ResponseEntity.ok(claimService.approveMedical(id, reviewer.getId()));
+    }
+
+
+
 }
 

@@ -25,6 +25,12 @@ public class HealthcareProviderClaim {
     @JoinColumn(name = "provider_id")
     private Client healthcareProvider; // الطبيب/الصيدلي/فني المختبر/فني الأشعة
 
+    @Column(columnDefinition = "TEXT")
+    private String diagnosis;
+
+    @Column(columnDefinition = "TEXT")
+    private String treatmentDetails;
+
     @Column(name = "client_id")
     private UUID clientId; // معرف المريض
 
@@ -63,8 +69,9 @@ public class HealthcareProviderClaim {
     void onCreate() {
         this.submittedAt = Instant.now();
         if (this.status == null) {
-            this.status = ClaimStatus.PENDING;
+            this.status = ClaimStatus.PENDING_MEDICAL;
         }
+
     }
 }
 
