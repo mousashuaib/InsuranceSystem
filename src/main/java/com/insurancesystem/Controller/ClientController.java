@@ -37,10 +37,11 @@ public class ClientController {
         return ResponseEntity.ok(clientServices.getById(id));
     }
 
-    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER', 'EMERGENCY_MANAGER')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER', 'EMERGENCY_MANAGER','MEDICAL_ADMIN','DOCTOR' , 'RADIOLOGIST' , 'LAB_TECH' , 'PHARMACIST' , 'DOCTOR' , 'COORDINATION_ADMIN')")
     @PatchMapping(value = "/update/{id}", consumes = {"multipart/form-data"})
     public ResponseEntity<ClientDto> updateUserById(
             @PathVariable UUID id,
+
             @RequestPart("data") @Valid UpdateUserDTO dto,
             @RequestPart(value = "universityCard", required = false) MultipartFile universityCard
     ) {

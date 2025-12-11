@@ -12,27 +12,30 @@ public class HealthcareProviderClaimMedicalDTO {
 
     private UUID id;
 
-    // === Patient Info ===
+    // Patient
     private UUID clientId;
     private String clientName;
+    private String employeeId;
 
-    // === Provider Info ===
+    // Provider
     private UUID providerId;
     private String providerName;
-    private String providerRole; // DOCTOR / LAB_TECH / PHARMACIST / RADIOLOGIST
+    private String providerRole;
 
-    // === Medical Info ===
+    // Medical
     private String diagnosis;
     private String treatmentDetails;
-    private String description;
     private LocalDate serviceDate;
 
-    // === Files ===
+    // Files
     private String invoiceImagePath;
 
+    // Status
     private ClaimStatus status;
     private Instant submittedAt;
-    private Instant approvedAt;
-    private Instant rejectedAt;
-    private String rejectionReason;
+    private String description; // ⭐ أضف هذا
+
+    // Medical Admin
+    private String medicalReviewerName;
+    private String medicalReviewedAt;
 }

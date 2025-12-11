@@ -50,8 +50,9 @@ public class HealthcareProviderClaim {
     private String roleSpecificData; // بيانات إضافية حسب الدور (JSON)
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false)
     private ClaimStatus status;
+
 
     @Column(name = "invoice_image_path")
     private String invoiceImagePath; // مسار صورة الفاتورة/الوثيقة
@@ -73,5 +74,15 @@ public class HealthcareProviderClaim {
         }
 
     }
+    // === Medical Admin Reviewer Info ===
+    @Column(name = "medical_reviewer_id")
+    private UUID medicalReviewerId;
+
+    @Column(name = "medical_reviewer_name")
+    private String medicalReviewerName;
+
+    @Column(name = "medical_reviewed_at")
+    private Instant medicalReviewedAt;
+
 }
 

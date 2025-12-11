@@ -99,6 +99,14 @@ public class AuthService {
             case INSURANCE_MANAGER, EMERGENCY_MANAGER -> {
                 throw new BadRequestException("This role can only be created by system administrators");
             }
+            case COORDINATION_ADMIN -> {
+                if (!isAdminRegister)
+                    throw new BadRequestException("Coordination Admin can only be created by INSURANCE_MANAGER");
+
+                if (req.getEmployeeId() == null || req.getDepartment() == null)
+                    throw new BadRequestException("Coordination Admin must provide employee ID and department");
+            }
+
         }
 
         // ✅ رفع صورة البطاقة الجامعية (اختياري)
@@ -152,8 +160,6 @@ public class AuthService {
                 .radiologyCode(req.getRadiologyCode())        // ✅ أضف هذا
                 .radiologyName(req.getRadiologyName())        // ✅ أضف هذا
                 .radiologyLocation(req.getRadiologyLocation()) // ✅ أضف هذا
-                .status(MemberStatus.INACTIVE)
-                .roleRequestStatus(RoleRequestStatus.PENDING)
                 .requestedRole(role)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
