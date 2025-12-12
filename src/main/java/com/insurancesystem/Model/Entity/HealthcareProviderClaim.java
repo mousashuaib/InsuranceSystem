@@ -50,7 +50,7 @@ public class HealthcareProviderClaim {
     private String roleSpecificData; // بيانات إضافية حسب الدور (JSON)
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(length = 30)
     private ClaimStatus status;
 
     @Column(name = "invoice_image_path")

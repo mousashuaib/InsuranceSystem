@@ -31,26 +31,28 @@ public class SearchProfileService {
     public SearchProfileDto createProfile(SearchProfileDto dto) {
         SearchProfile entity = searchProfileMapper.toEntity(dto);
 
+        // ✅ Copy document fields (MapStruct already maps them, but this ensures clarity)
+        entity.setMedicalLicense(dto.getMedicalLicense());
+        entity.setUniversityDegree(dto.getUniversityDegree());
+        entity.setClinicRegistration(dto.getClinicRegistration());
+        entity.setIdOrPassportCopy(dto.getIdOrPassportCopy());
+
         // 🧑‍💻 المستخدم الحالي (صاحب الطلب)
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         Client currentUser = clientRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // تعبئة البيانات الافتراضية
         entity.setOwner(currentUser);
         entity.setStatus(ProfileStatus.PENDING);
         entity.setRejectionReason(null);
 
-        // حفظ البروفايل
         SearchProfile savedProfile = repository.save(entity);
 
-        // 🔔 إشعار لصاحب الطلب (System → User)
         notificationService.sendToUser(
                 currentUser.getId(),
                 "تم استلام طلبك لإنشاء بروفايل جديد وهو الآن قيد المراجعة"
         );
 
-        // 🔔 إشعار لجميع المدراء (System → Managers)
         notificationService.sendToRole(
                 RoleName.INSURANCE_MANAGER,
                 "يوجد طلب جديد لإنشاء بروفايل من المستخدم: " + currentUser.getUsername()
@@ -58,6 +60,7 @@ public class SearchProfileService {
 
         return searchProfileMapper.toDto(savedProfile);
     }
+
 
 
 
@@ -152,7 +155,7 @@ public class SearchProfileService {
         SearchProfile profile = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Profile not found"));
 
-        // تحديث البيانات
+        // ✅ Update basic fields
         profile.setName(dto.getName());
         profile.setAddress(dto.getAddress());
         profile.setContactInfo(dto.getContactInfo());
@@ -160,19 +163,23 @@ public class SearchProfileService {
         profile.setLocationLat(dto.getLocationLat());
         profile.setLocationLng(dto.getLocationLng());
 
-        // ✅ عند أي تعديل، يرجع البروفايل لحالة PENDING
+        // ✅ Update document fields
+        profile.setMedicalLicense(dto.getMedicalLicense());
+        profile.setUniversityDegree(dto.getUniversityDegree());
+        profile.setClinicRegistration(dto.getClinicRegistration());
+        profile.setIdOrPassportCopy(dto.getIdOrPassportCopy());
+
+        // ✅ Any update resets status to PENDING
         profile.setStatus(ProfileStatus.PENDING);
         profile.setRejectionReason(null);
 
         SearchProfile updatedProfile = repository.save(profile);
 
-        // 🔔 إشعار لصاحب البروفايل
         notificationService.sendToUser(
                 profile.getOwner().getId(),
                 "✏️ تم تعديل البروفايل الخاص بك، وهو الآن قيد المراجعة من الإدارة."
         );
 
-        // 🔔 إشعار لجميع المدراء
         notificationService.sendToRole(
                 RoleName.INSURANCE_MANAGER,
                 "📢 يوجد تعديل جديد على بروفايل من المستخدم: "
@@ -182,6 +189,7 @@ public class SearchProfileService {
 
         return searchProfileMapper.toDto(updatedProfile);
     }
+
 
     public void deleteProfileById(UUID id) {
         SearchProfile profile = repository.findById(id)

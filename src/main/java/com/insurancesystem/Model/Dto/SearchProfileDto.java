@@ -24,4 +24,10 @@ public class SearchProfileDto {
     private String ownerName; // اسم المالك (doctor/pharmacist/lab)
     private ProfileStatus status; // PENDING, APPROVED, REJECTED
     private String rejectionReason; // ✅ سبب الرفض
+
+    // ✅ New Document Fields
+    private String medicalLicense;       // رخصة مزاولة المهنة (Required)
+    private String universityDegree;     // الشهادة الجامعية (Required)
+    private String clinicRegistration;   // تسجيل العيادة (Optional)
+    private String idOrPassportCopy;     // نسخة الهوية / الجواز (Required)
 }
