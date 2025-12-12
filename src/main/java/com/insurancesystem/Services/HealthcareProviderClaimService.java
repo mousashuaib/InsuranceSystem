@@ -401,6 +401,94 @@ public class HealthcareProviderClaimService {
 
         }).toList();
     }
+    // ============================================================
+// 🟩 Batch Administrative Approval
+// ============================================================
+    public void approveAdminBatch(List<UUID> claimIds, UUID reviewerId) {
 
+        List<HealthcareProviderClaim> claims = claimRepo.findAllById(claimIds);
+
+        for (HealthcareProviderClaim claim : claims) {
+
+            // فقط المطالبات الجاهزة
+            if (claim.getStatus() != ClaimStatus.AWAITING_ADMIN_REVIEW) {
+                continue; // نتجاهل بدون كسر العملية
+            }
+
+            claim.setStatus(ClaimStatus.APPROVED);
+            claim.setApprovedAt(Instant.now());
+        }
+
+        claimRepo.saveAll(claims);
+    }
+
+    // ============================================================
+// 📤 Export Approved Claims as CSV
+// ============================================================
+    public byte[] exportApprovedClaimsCsv() {
+
+        List<HealthcareProviderClaim> claims =
+                claimRepo.findAllApprovedClaims();
+
+        StringBuilder csv = new StringBuilder();
+
+        // ===============================
+        // CSV Header (✔ تمت إضافة Medical Reviewer)
+        // ===============================
+        csv.append(
+                "Claim ID," +
+                        "Patient Name," +
+                        "Employee ID," +
+                        "Provider Name," +
+                        "Provider Role," +
+                        "Medical Reviewer," +          // ⭐ NEW
+                        "Amount," +
+                        "Service Date," +
+                        "Approved Date\n"
+        );
+
+        for (HealthcareProviderClaim claim : claims) {
+
+            String providerRole = claim.getHealthcareProvider()
+                    .getRoles()
+                    .stream()
+                    .findFirst()
+                    .map(r -> r.getName().name())
+                    .orElse("UNKNOWN");
+
+            csv.append(claim.getId()).append(",");
+            csv.append(escape(claim.getClientName())).append(",");
+            csv.append(getEmployeeId(claim)).append(",");
+            csv.append(escape(claim.getHealthcareProvider().getFullName())).append(",");
+            csv.append(providerRole).append(",");
+
+            // ===============================
+            // ⭐ Medical Reviewer
+            // ===============================
+            csv.append(escape(claim.getMedicalReviewerName())).append(",");
+
+            csv.append(claim.getAmount()).append(",");
+            csv.append(claim.getServiceDate()).append(",");
+            csv.append(claim.getApprovedAt()).append("\n");
+        }
+
+        return csv.toString().getBytes();
+    }
+
+
+    // ===============================
+// Helpers
+// ===============================
+    private String escape(String value) {
+        if (value == null) return "";
+        return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+
+    private String getEmployeeId(HealthcareProviderClaim claim) {
+        if (claim.getClientId() == null) return "";
+        return clientRepo.findById(claim.getClientId())
+                .map(Client::getEmployeeId)
+                .orElse("");
+    }
 
 }

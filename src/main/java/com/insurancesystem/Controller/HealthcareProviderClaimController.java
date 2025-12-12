@@ -253,5 +253,38 @@ public class HealthcareProviderClaimController {
         );
     }
 
+    // ============================================================
+// Coordination Admin → Batch Approve
+// ============================================================
+    @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
+    @PatchMapping("/admin/approve-batch")
+    public ResponseEntity<?> approveAdminBatch(
+            @RequestBody AdminBatchApproveDTO dto,
+            Authentication auth
+    ) {
+
+        Client reviewer = clientRepo.findByUsername(auth.getName())
+                .orElseThrow(() -> new NotFoundException("Reviewer not found"));
+
+        claimService.approveAdminBatch(dto.getClaimIds(), reviewer.getId());
+
+        return ResponseEntity.ok(
+                Map.of("message", "Batch approval completed successfully")
+        );
+    }
+    // ============================================================
+// Coordination Admin → Export Approved Claims (CSV)
+// ============================================================
+    @PreAuthorize("hasAnyAuthority('ROLE_COORDINATION_ADMIN','ROLE_INSURANCE_MANAGER')")
+    @GetMapping("/export/approved")
+    public ResponseEntity<byte[]> exportApprovedClaimsCsv() {
+
+        byte[] csvData = claimService.exportApprovedClaimsCsv();
+
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=approved_claims.csv")
+                .header("Content-Type", "text/csv")
+                .body(csvData);
+    }
 
 }

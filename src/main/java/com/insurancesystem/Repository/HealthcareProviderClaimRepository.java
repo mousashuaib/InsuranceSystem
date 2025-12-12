@@ -30,6 +30,11 @@ public interface HealthcareProviderClaimRepository extends JpaRepository<Healthc
     double sumAmountByStatus(@Param("status") ClaimStatus status);
 
     List<HealthcareProviderClaim> findByStatusIn(List<ClaimStatus> statuses);
+    @Query("""
+    SELECT c FROM HealthcareProviderClaim c
+    WHERE c.status = com.insurancesystem.Model.Entity.Enums.ClaimStatus.APPROVED
+""")
+    List<HealthcareProviderClaim> findAllApprovedClaims();
 
 
 
