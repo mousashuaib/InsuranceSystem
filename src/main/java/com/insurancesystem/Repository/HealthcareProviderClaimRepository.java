@@ -28,5 +28,10 @@ public interface HealthcareProviderClaimRepository extends JpaRepository<Healthc
 
     @Query("SELECT COALESCE(SUM(c.amount),0) FROM HealthcareProviderClaim c WHERE c.status = :status")
     double sumAmountByStatus(@Param("status") ClaimStatus status);
+
+    List<HealthcareProviderClaim> findByStatusIn(List<ClaimStatus> statuses);
+
+
+
 }
 

@@ -40,5 +40,9 @@ public interface HealthcareProviderClaimMapper {
     @Mapping(source = "serviceDate", target = "serviceDate")
     @Mapping(source = "invoiceImagePath", target = "invoiceImagePath")
     @Mapping(source = "clientId", target = "clientId")
+    @Mapping(source = "medicalReviewerName", target = "medicalReviewerName")
+    @Mapping(target = "medicalReviewedAt",
+            expression = "java(claim.getMedicalReviewedAt() != null ? claim.getMedicalReviewedAt().toString() : null)")
     HealthcareProviderClaimMedicalDTO toMedicalDto(HealthcareProviderClaim claim);
+
 }

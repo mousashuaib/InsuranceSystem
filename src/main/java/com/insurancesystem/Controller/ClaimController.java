@@ -58,7 +58,7 @@ public class ClaimController {
     // ============================================================
     // 📋 عرض كل المطالبات الخاصة بعضو واحد
     // ============================================================
-    @PreAuthorize("hasAnyRole('INSURANCE_CLIENT', 'MEDICAL_ADMIN', 'INSURANCE_MANAGER')")
+    @PreAuthorize("hasAnyRole('INSURANCE_CLIENT', 'MEDICAL_ADMIN', 'COORDINATION_ADMIN')")
     @GetMapping("/allClaimForOneMember")
     public ResponseEntity<List<ClaimDTO>> getMemberClaims(Authentication auth) {
 
@@ -73,7 +73,7 @@ public class ClaimController {
     // ============================================================
     // 📋 عرض جميع المطالبات لجميع الأعضاء (للإداريين فقط)
     // ============================================================
-    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER', 'MEDICAL_ADMIN')")
+    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN', 'MEDICAL_ADMIN')")
     @GetMapping("/allClaimsByManager")
     public ResponseEntity<List<ClaimDTO>> getAllClaims() {
         return ResponseEntity.ok(claimService.getAllClaims());
@@ -82,7 +82,7 @@ public class ClaimController {
     // ============================================================
     // 📋 عرض مطالبة واحدة بالتفصيل
     // ============================================================
-    @PreAuthorize("hasAnyRole('INSURANCE_CLIENT', 'MEDICAL_ADMIN', 'INSURANCE_MANAGER')")
+    @PreAuthorize("hasAnyRole('INSURANCE_CLIENT', 'MEDICAL_ADMIN', 'COORDINATION_ADMIN')")
     @GetMapping("/ByIdClaim/{id}")
     public ResponseEntity<ClaimDTO> getClaim(
             @PathVariable UUID id,
@@ -106,7 +106,7 @@ public class ClaimController {
     // ============================================================
     // 🟩 موافقة على مطالبة (طبية أو إدارية)
     // ============================================================
-    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER', 'MEDICAL_ADMIN')")
+    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN', 'MEDICAL_ADMIN')")
     @PatchMapping("/{id}/approve")
     public ResponseEntity<ClaimDTO> approveClaim(
             @PathVariable UUID id,
@@ -132,7 +132,7 @@ public class ClaimController {
     // ============================================================
     // ❌ رفض مطالبة (طبي أو إداري)
     // ============================================================
-    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER', 'MEDICAL_ADMIN')")
+    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN', 'MEDICAL_ADMIN')")
     @PatchMapping("/{id}/reject")
     public ResponseEntity<ClaimDTO> rejectClaim(
             @PathVariable UUID id,
@@ -167,7 +167,7 @@ public class ClaimController {
     // ============================================================
     // 🧾 المطالبات بانتظار المراجعة الإدارية
     // ============================================================
-    @PreAuthorize("hasRole('INSURANCE_MANAGER')")
+    @PreAuthorize("hasRole('COORDINATION_ADMIN')")
     @GetMapping("/admin-review")
     public ResponseEntity<List<ClaimDTO>> getClaimsForAdminReview() {
         return ResponseEntity.ok(claimService.getClaimsForAdminReview());

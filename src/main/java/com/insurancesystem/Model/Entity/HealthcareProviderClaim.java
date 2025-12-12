@@ -23,7 +23,7 @@ public class HealthcareProviderClaim {
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "provider_id")
-    private Client healthcareProvider; // الطبيب/الصيدلي/فني المختبر/فني الأشعة
+    private Client healthcareProvider;
 
     @Column(columnDefinition = "TEXT")
     private String diagnosis;
@@ -32,29 +32,29 @@ public class HealthcareProviderClaim {
     private String treatmentDetails;
 
     @Column(name = "client_id")
-    private UUID clientId; // معرف المريض
+    private UUID clientId;
 
     @Column(name = "client_name")
-    private String clientName; // اسم المريض
+    private String clientName;
 
     @Column(nullable = false, columnDefinition = "TEXT")
-    private String description; // وصف الخدمة المقدمة
+    private String description;
 
     @Column(nullable = false)
-    private Double amount; // قيمة الخدمة
+    private Double amount;
 
     @Column(nullable = false)
-    private LocalDate serviceDate; // تاريخ تقديم الخدمة
+    private LocalDate serviceDate;
 
     @Column(columnDefinition = "TEXT")
-    private String roleSpecificData; // بيانات إضافية حسب الدور (JSON)
+    private String roleSpecificData;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 30)
+    @Column(nullable = false, length = 30)
     private ClaimStatus status;
 
     @Column(name = "invoice_image_path")
-    private String invoiceImagePath; // مسار صورة الفاتورة/الوثيقة
+    private String invoiceImagePath;
 
     private Instant submittedAt;
 
@@ -71,7 +71,16 @@ public class HealthcareProviderClaim {
         if (this.status == null) {
             this.status = ClaimStatus.PENDING_MEDICAL;
         }
-
     }
-}
 
+    // === Medical Admin Reviewer Info ===
+    @Column(name = "medical_reviewer_id")
+    private UUID medicalReviewerId;
+
+    @Column(name = "medical_reviewer_name")
+    private String medicalReviewerName;
+
+    @Column(name = "medical_reviewed_at")
+    private Instant medicalReviewedAt;
+
+}
