@@ -271,4 +271,23 @@ public class PrescriptionController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
+    @PatchMapping("/{id}/bill")
+    @PreAuthorize("hasRole('PHARMACIST')")
+    public ResponseEntity<?> bill(@PathVariable UUID id) {
+        try {
+            return ResponseEntity.ok(prescriptionService.bill(id));
+        } catch (NotFoundException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        } catch (IllegalStateException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+        } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
 }

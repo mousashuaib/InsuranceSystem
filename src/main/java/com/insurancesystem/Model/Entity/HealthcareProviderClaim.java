@@ -1,9 +1,11 @@
 package com.insurancesystem.Model.Entity;
 
+import com.fasterxml.jackson.annotation.JacksonInject;
 import com.insurancesystem.Model.Entity.Enums.ClaimStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -61,7 +63,7 @@ public class HealthcareProviderClaim {
     private Instant approvedAt;
 
     private Instant rejectedAt;
-
+    private String doctorName;
     @Column(columnDefinition = "text")
     private String rejectionReason;
 
@@ -82,5 +84,35 @@ public class HealthcareProviderClaim {
 
     @Column(name = "medical_reviewed_at")
     private Instant medicalReviewedAt;
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "policy_id", nullable = true)
+    private Policy policy;
+
+    // =======================
+    //      COVERAGE FIELDS
+    // =======================
+
+    @Column(nullable = true)
+    private Boolean isCovered;
+
+    @Column(nullable = true)
+    private Boolean emergency;
+
+
+    @Column(columnDefinition = "text")
+    private String coverageMessage;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal insuranceCoveredAmount = BigDecimal.ZERO;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal clientPayAmount = BigDecimal.ZERO;
+
+    @Column(precision = 5, scale = 2)
+    private BigDecimal coveragePercentUsed = BigDecimal.ZERO;
+
+    @Column(precision = 12, scale = 2)
+    private BigDecimal maxCoverageUsed = BigDecimal.ZERO;
+
 
 }

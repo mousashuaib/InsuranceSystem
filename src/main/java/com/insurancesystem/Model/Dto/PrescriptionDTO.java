@@ -24,7 +24,8 @@ public class PrescriptionDTO {
     // الأشخاص المعنيين
     private UUID memberId;
     private String memberName;
-
+    private String employeeId;
+    private String universityCardImage;
     private String doctorName;
 
     private UUID pharmacistId;

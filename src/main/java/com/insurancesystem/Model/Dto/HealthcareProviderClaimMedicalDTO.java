@@ -21,7 +21,7 @@ public class HealthcareProviderClaimMedicalDTO {
     private UUID providerId;
     private String providerName;
     private String providerRole;
-
+    private String roleSpecificData;
     // Medical
     private String diagnosis;
     private String treatmentDetails;

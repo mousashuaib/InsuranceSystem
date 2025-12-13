@@ -57,7 +57,12 @@ public class RadiologyRequest {
         createdAt = now;
         updatedAt = now;
     }
+    // 🔥 NEW
+    @Column(columnDefinition = "TEXT")
+    private String diagnosis;
 
+    @Column(columnDefinition = "TEXT")
+    private String treatment;
     @PreUpdate
     void onUpdate() {
         updatedAt = Instant.now();

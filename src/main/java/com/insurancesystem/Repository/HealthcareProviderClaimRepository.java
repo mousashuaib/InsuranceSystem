@@ -3,6 +3,8 @@ package com.insurancesystem.Repository;
 import com.insurancesystem.Model.Entity.HealthcareProviderClaim;
 import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.Entity.Enums.ClaimStatus;
+
+import com.insurancesystem.Model.Entity.Policy;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,10 +20,21 @@ public interface HealthcareProviderClaimRepository extends JpaRepository<Healthc
 
     List<HealthcareProviderClaim> findByStatus(ClaimStatus status);
 
+    void deleteAllByPolicy(Policy policy);
+
+
     long countByStatus(ClaimStatus status);
 
-    @Query("SELECT COALESCE(SUM(c.amount),0) FROM HealthcareProviderClaim c WHERE c.status = 'APPROVED'")
-    double sumApprovedAmounts();
+    @Query("""
+    SELECT c.healthcareProvider.fullName AS providerName,
+           SUM(c.amount) AS totalAmount
+    FROM HealthcareProviderClaim c
+    WHERE c.status = 'APPROVED'
+    GROUP BY c.healthcareProvider.fullName
+    ORDER BY totalAmount DESC
+""")
+    List<Object[]> findTopProviders();
+
 
     @Query("SELECT SUM(c.amount) FROM HealthcareProviderClaim c WHERE c.status = 'APPROVED'")
     Double getTotalApprovedAmount();
@@ -36,6 +49,14 @@ public interface HealthcareProviderClaimRepository extends JpaRepository<Healthc
 """)
     List<HealthcareProviderClaim> findAllApprovedClaims();
 
+    @Query("""
+        SELECT c.doctorName, COUNT(c)
+        FROM HealthcareProviderClaim c
+        WHERE c.doctorName IS NOT NULL AND c.doctorName <> ''
+        GROUP BY c.doctorName
+        ORDER BY COUNT(c) DESC
+    """)
+    List<Object[]> findTopDoctorsByClaims();
 
 
 }

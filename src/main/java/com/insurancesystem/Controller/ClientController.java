@@ -3,6 +3,9 @@ package com.insurancesystem.Controller;
 import com.insurancesystem.Model.Dto.ClientDto;
 import com.insurancesystem.Model.Dto.RejectReasonDTO;
 import com.insurancesystem.Model.Dto.UpdateUserDTO;
+import com.insurancesystem.Model.Entity.Client;
+import com.insurancesystem.Model.Entity.Enums.RoleName;
+import com.insurancesystem.Repository.ClientRepository;
 import com.insurancesystem.Services.ClientServices;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +27,7 @@ import java.util.UUID;
 public class ClientController {
 
     private final ClientServices clientServices;
+    private final ClientRepository clientRepository; // ✅ Add this to check roles
 
     @PreAuthorize("hasRole('INSURANCE_MANAGER')")
     @GetMapping("/list")
@@ -41,7 +45,6 @@ public class ClientController {
     @PatchMapping(value = "/update/{id}", consumes = {"multipart/form-data"})
     public ResponseEntity<ClientDto> updateUserById(
             @PathVariable UUID id,
-
             @RequestPart("data") @Valid UpdateUserDTO dto,
             @RequestPart(value = "universityCard", required = false) MultipartFile universityCard
     ) {
@@ -107,12 +110,13 @@ public class ClientController {
     /**
      * 🆔 Search client by employee ID
      * Used by doctors to auto-populate patient information in medical forms
+     * ✅ ONLY returns clients with INSURANCE_CLIENT role
      *
      * @param employeeId The employee ID to search for
      * @return Client information (fullName, department, faculty, specialization, etc.)
      */
     @GetMapping("/search/employeeId/{employeeId}")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN', 'INSURANCE_MANAGER', 'INSURANCE_CLIENT')")
+    @PreAuthorize("hasAnyRole('RADIOLOGIST','LAB_TECH','PHARMACIST','DOCTOR', 'ADMIN', 'INSURANCE_MANAGER')")
     public ResponseEntity<?> findByEmployeeId(@PathVariable String employeeId) {
         try {
             if (employeeId == null || employeeId.trim().isEmpty()) {
@@ -120,6 +124,25 @@ public class ClientController {
                         .body(Map.of("error", "Employee ID cannot be empty"));
             }
 
+            // ✅ Get client from repository to check roles
+            Client client = clientRepository.findByEmployeeId(employeeId)
+                    .orElseThrow(() -> new RuntimeException("Employee ID not found: " + employeeId));
+
+            // ✅ Validate that the user has INSURANCE_CLIENT role ONLY
+            boolean hasInsuranceClientRole = client.getRoles().stream()
+                    .anyMatch(role -> role.getName() == RoleName.INSURANCE_CLIENT);
+
+            if (!hasInsuranceClientRole) {
+                // ❌ User exists but doesn't have INSURANCE_CLIENT role
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of(
+                                "error", "INVALID_ROLE",
+                                "message", "This Employee ID belongs to a user with a different role. Only INSURANCE_CLIENT role is allowed.",
+                                "employeeId", employeeId
+                        ));
+            }
+
+            // ✅ Valid INSURANCE_CLIENT - get DTO and return data
             ClientDto clientDto = clientServices.findByEmployeeId(employeeId);
 
             Map<String, Object> response = new HashMap<>();
@@ -134,9 +157,13 @@ public class ClientController {
 
             return ResponseEntity.ok(response);
 
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
+            // Employee ID not found
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "Employee ID not found: " + employeeId));
+                    .body(Map.of("error", "NOT_FOUND", "message", "Employee ID not found: " + employeeId));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "INTERNAL_ERROR", "message", "An error occurred while searching for employee ID"));
         }
     }
 
@@ -148,7 +175,7 @@ public class ClientController {
      * @return Client information
      */
     @GetMapping("/search/name/{fullName}")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN', 'INSURANCE_MANAGER', 'INSURANCE_CLIENT')")
+    @PreAuthorize("hasAnyRole('RADIOLOGIST','LAB_TECH','PHARMACIST','DOCTOR', 'ADMIN', 'INSURANCE_MANAGER', 'INSURANCE_CLIENT')")
     public ResponseEntity<?> findByFullName(@PathVariable String fullName) {
         try {
             if (fullName == null || fullName.trim().isEmpty()) {

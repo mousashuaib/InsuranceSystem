@@ -19,7 +19,7 @@ public class ClaimsReportDto {
     private double totalRejectedAmount;
 
     // ====== Detailed lists ======
-    private List<ClaimDTO> approvedList;
-    private List<ClaimDTO> rejectedList;
-    private List<ClaimDTO> pendingList;
+    private List<HealthcareProviderClaimDTO> approvedList;
+    private List<HealthcareProviderClaimDTO> rejectedList;
+    private List<HealthcareProviderClaimDTO> pendingList;
 }

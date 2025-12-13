@@ -1,6 +1,7 @@
 package com.insurancesystem.Services;
 
 import com.insurancesystem.Model.Dto.MembersActivityReportDto;
+import com.insurancesystem.Model.Entity.HealthcareProviderClaim;
 import com.insurancesystem.Repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -10,7 +11,7 @@ import org.springframework.stereotype.Service;
 public class MembersActivityReportService {
 
     private final ClientRepository clientRepo;
-    private final ClaimRepository claimRepo;
+    private final HealthcareProviderClaimRepository claimRepo;
     private final PrescriptionRepository prescriptionRepo;
     private final LabRequestRepository labRepo;
     private final EmergencyRequestRepository emergencyRepo;
@@ -20,7 +21,7 @@ public class MembersActivityReportService {
         long totalMembers = clientRepo.count();
 
         long membersWithClaims = claimRepo.findAll().stream()
-                .map(c -> c.getMember().getId())
+                .map(HealthcareProviderClaim::getId)
                 .distinct()
                 .count();
 

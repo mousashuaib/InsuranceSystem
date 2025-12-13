@@ -17,7 +17,8 @@ public interface PrescriptionMapper {
     // 🔥 NEW — diagnosis + treatment
     @Mapping(source = "diagnosis", target = "diagnosis")
     @Mapping(source = "treatment", target = "treatment")
-
+    @Mapping(source = "member.employeeId", target = "employeeId")
+    @Mapping(source = "member.universityCardImage", target = "universityCardImage")
     PrescriptionDTO toDto(Prescription entity);
 
     @Mapping(target = "pharmacist", ignore = true)

@@ -18,7 +18,8 @@ public interface RadiologyRequestMapper {
     @Mapping(source = "test.id", target = "testId")
     @Mapping(source = "test.serviceName", target = "testName")
     @Mapping(source = "test.price", target = "approvedPrice")  // default union price
-
+    @Mapping(source = "member.employeeId", target = "employeeId")
+    @Mapping(source = "member.universityCardImage", target = "universityCardImage")
     RadiologyRequestDTO toDto(RadiologyRequest request);
 
     // DTO → Entity

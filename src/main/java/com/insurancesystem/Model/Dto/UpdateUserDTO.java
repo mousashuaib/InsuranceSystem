@@ -1,5 +1,6 @@
 package com.insurancesystem.Model.Dto;
 
+import com.insurancesystem.Model.Entity.Enums.DoctorSpecialization;
 import com.insurancesystem.Model.Entity.Enums.MemberStatus;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -35,4 +36,5 @@ public class UpdateUserDTO {
     private String labCode;
     private String labName;
     private String labLocation;
+    private DoctorSpecialization doctorSpecialization;
 }

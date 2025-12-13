@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class UsageReportService {
 
-    private final ClaimRepository claimRepo;
+    private final HealthcareProviderClaimRepository claimRepo;
     private final PrescriptionRepository prescriptionRepo;
     private final LabRequestRepository labRepo;
     private final EmergencyRequestRepository emergencyRepo;

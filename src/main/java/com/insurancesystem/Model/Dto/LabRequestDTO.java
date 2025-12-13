@@ -20,14 +20,19 @@ public class LabRequestDTO {
 
     private String resultUrl;
 
+
     private String status;
 
-    private UUID doctorId;
+    private String diagnosis;
+    private String treatment;
+
+     private UUID doctorId;
     private String doctorName;
 
     private UUID memberId;
     private String memberName;
-
+    private String employeeId;
+    private String universityCardImage;
     private UUID labTechId;
     private String labTechName;
 

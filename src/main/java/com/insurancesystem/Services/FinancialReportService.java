@@ -2,7 +2,8 @@ package com.insurancesystem.Services;
 
 import com.insurancesystem.Model.Dto.FinancialReportDto;
 import com.insurancesystem.Model.Entity.Enums.ClaimStatus;
-import com.insurancesystem.Repository.ClaimRepository;
+
+import com.insurancesystem.Repository.HealthcareProviderClaimRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -13,7 +14,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class FinancialReportService {
 
-    private final ClaimRepository claimRepo;
+    private final HealthcareProviderClaimRepository claimRepo;
 
     public FinancialReportDto generateReport() {
         double totalExpenses = claimRepo.sumAmountByStatus(ClaimStatus.APPROVED);

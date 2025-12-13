@@ -8,9 +8,9 @@ import com.insurancesystem.Model.Dto.UpdatePolicyDTO;
 import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.Entity.Policy;
 import com.insurancesystem.Model.MapStruct.PolicyMapper;
-import com.insurancesystem.Repository.ClaimRepository;
 import com.insurancesystem.Repository.ClientRepository;
 import com.insurancesystem.Repository.CoverageRepository;
+import com.insurancesystem.Repository.HealthcareProviderClaimRepository;
 import com.insurancesystem.Repository.PolicyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,7 +28,7 @@ public class PolicyService {
     private final PolicyMapper policyMapper;
     private final ClientRepository clientRepo;
     private final CoverageRepository coverageRepository;
-    private final ClaimRepository claimRepository;
+    private final HealthcareProviderClaimRepository claimRepository;
 
 
 

@@ -10,6 +10,7 @@ import org.mapstruct.*;
 
 import java.util.Set;
 import java.util.stream.Collectors;
+
 @Mapper(config = MapStructConfig.class)
 public interface ClientMapper {
 
@@ -24,23 +25,24 @@ public interface ClientMapper {
     Client toEntity(CreateClientDto dto);
 
     @BeanMapping(ignoreByDefault = true)
-    @Mapping(target = "fullName", source = "fullName", ignore = false)
-    @Mapping(target = "email", source = "email", ignore = false)
-    @Mapping(target = "phone", source = "phone", ignore = false)
-    @Mapping(target = "employeeId", source = "employeeId", ignore = false)
-    @Mapping(target = "department", source = "department", ignore = false)
-    @Mapping(target = "faculty", source = "faculty", ignore = false)
-    @Mapping(target = "specialization", source = "specialization", ignore = false)
-    @Mapping(target = "clinicLocation", source = "clinicLocation", ignore = false)
-    @Mapping(target = "pharmacyCode", source = "pharmacyCode", ignore = false)
-    @Mapping(target = "pharmacyName", source = "pharmacyName", ignore = false)
-    @Mapping(target = "pharmacyLocation", source = "pharmacyLocation", ignore = false)
-    @Mapping(target = "labCode", source = "labCode", ignore = false)
-    @Mapping(target = "labName", source = "labName", ignore = false)
-    @Mapping(target = "labLocation", source = "labLocation", ignore = false)
-    @Mapping(target = "radiologyCode", source = "labCode", ignore = false)
-    @Mapping(target = "radiologyName", source = "labName", ignore = false)
-    @Mapping(target = "radiologyLocation", source = "labLocation", ignore = false)
+    @Mapping(target = "fullName", source = "fullName")
+    @Mapping(target = "email", source = "email")
+    @Mapping(target = "phone", source = "phone")
+    @Mapping(target = "employeeId", source = "employeeId")
+    @Mapping(target = "department", source = "department")
+    @Mapping(target = "faculty", source = "faculty")
+    @Mapping(target = "specialization", source = "specialization")
+    @Mapping(target = "clinicLocation", source = "clinicLocation")
+    @Mapping(target = "pharmacyCode", source = "pharmacyCode")
+    @Mapping(target = "pharmacyName", source = "pharmacyName")
+    @Mapping(target = "pharmacyLocation", source = "pharmacyLocation")
+    @Mapping(target = "labCode", source = "labCode")
+    @Mapping(target = "labName", source = "labName")
+    @Mapping(target = "labLocation", source = "labLocation")
+    @Mapping(target = "radiologyCode", source = "labCode")
+    @Mapping(target = "radiologyName", source = "labName")
+    @Mapping(target = "radiologyLocation", source = "labLocation")
+
     @Mapping(target = "passwordHash", ignore = true)
     @Mapping(target = "roles", ignore = true)
     @Mapping(target = "universityCardImage", ignore = true)

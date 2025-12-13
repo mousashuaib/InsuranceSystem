@@ -23,7 +23,8 @@ public interface LabRequestMapper {
     @Mapping(source = "test.id", target = "testId")
     @Mapping(source = "test.serviceName", target = "serviceName")
     @Mapping(source = "test.price", target = "unionPrice")
-
+    @Mapping(source = "member.employeeId", target = "employeeId")
+    @Mapping(source = "member.universityCardImage", target = "universityCardImage")
     LabRequestDTO toDto(LabRequest request);
 
     // ----------------------------
@@ -39,6 +40,8 @@ public interface LabRequestMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-
+    // 🔥 NEW — diagnosis + treatment
+    @Mapping(source = "diagnosis", target = "diagnosis")
+    @Mapping(source = "treatment", target = "treatment")
     LabRequest toEntity(LabRequestDTO dto);
 }

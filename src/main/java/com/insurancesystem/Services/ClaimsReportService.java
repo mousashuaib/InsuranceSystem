@@ -1,11 +1,10 @@
 package com.insurancesystem.Services;
 
-import com.insurancesystem.Model.Dto.ClaimDTO;
 import com.insurancesystem.Model.Dto.ClaimsReportDto;
-import com.insurancesystem.Model.Entity.Claim;
+import com.insurancesystem.Model.Dto.HealthcareProviderClaimDTO;
 import com.insurancesystem.Model.Entity.Enums.ClaimStatus;
-import com.insurancesystem.Model.MapStruct.ClaimMapper;
-import com.insurancesystem.Repository.ClaimRepository;
+import com.insurancesystem.Model.MapStruct.HealthcareProviderClaimMapper;
+import com.insurancesystem.Repository.HealthcareProviderClaimRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -15,8 +14,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ClaimsReportService {
 
-    private final ClaimRepository claimRepo;
-    private final ClaimMapper claimMapper;
+    private final HealthcareProviderClaimRepository claimRepo;
+    private final HealthcareProviderClaimMapper claimMapper;
 
     public ClaimsReportDto generateReport() {
         long totalClaims = claimRepo.count();
@@ -24,13 +23,13 @@ public class ClaimsReportService {
         long rejectedClaims = claimRepo.countByStatus(ClaimStatus.REJECTED);
         long pendingClaims = claimRepo.countByStatus(ClaimStatus.PENDING);
 
-        List<ClaimDTO> approvedList = claimRepo.findByStatus(ClaimStatus.APPROVED)
+        List<HealthcareProviderClaimDTO> approvedList = claimRepo.findByStatus(ClaimStatus.APPROVED)
                 .stream().map(claimMapper::toDto).toList();
 
-        List<ClaimDTO> rejectedList = claimRepo.findByStatus(ClaimStatus.REJECTED)
+        List<HealthcareProviderClaimDTO> rejectedList = claimRepo.findByStatus(ClaimStatus.REJECTED)
                 .stream().map(claimMapper::toDto).toList();
 
-        List<ClaimDTO> pendingList = claimRepo.findByStatus(ClaimStatus.PENDING)
+        List<HealthcareProviderClaimDTO> pendingList = claimRepo.findByStatus(ClaimStatus.PENDING)
                 .stream().map(claimMapper::toDto).toList();
 
         double totalApprovedAmount = approvedList.stream()

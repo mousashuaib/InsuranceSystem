@@ -42,7 +42,6 @@ public class PrescriptionService {
     private final PrescriptionMapper prescriptionMapper;
     private final ClientMapper clientMapper;
     private final NotificationService notificationService;
-
     private final ObjectMapper json = new ObjectMapper();
 
     private int extractQuantity(String jsonStr) {
@@ -50,7 +49,6 @@ public class PrescriptionService {
             if (jsonStr == null) return 1;
             Map<String, Object> data = json.readValue(jsonStr, Map.class);
             return data.get("quantity") != null ? (int) data.get("quantity") : 1;
-
         } catch (Exception e) {
             return 1;
         }
@@ -82,20 +80,18 @@ public class PrescriptionService {
                 .doctor(doctor)
                 .member(member)
                 .status(PrescriptionStatus.PENDING)
-                .diagnosis(dto.getDiagnosis())   // NEW
-                .treatment(dto.getTreatment())   // NEW
+                .diagnosis(dto.getDiagnosis())
+                .treatment(dto.getTreatment())
                 .totalPrice(0.0)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
-
 
         prescriptionRepo.save(prescription);
 
         List<PrescriptionItem> savedItems = new ArrayList<>();
 
         for (PrescriptionItemDTO itemDto : dto.getItems()) {
-
             PriceList med = priceListRepo.findById(itemDto.getMedicineId())
                     .orElseThrow(() -> new NotFoundException("MEDICINE_NOT_FOUND_IN_PRICE_LIST"));
 
@@ -106,7 +102,7 @@ public class PrescriptionService {
 
             PrescriptionItem item = PrescriptionItem.builder()
                     .prescription(prescription)
-                    .priceList(med) // 🔥 تصحيح مهم
+                    .priceList(med)
                     .dosage(itemDto.getDosage())
                     .timesPerDay(itemDto.getTimesPerDay())
                     .expiryDate(expiry)
@@ -120,8 +116,19 @@ public class PrescriptionService {
         prescription.setItems(savedItems);
         prescriptionRepo.save(prescription);
 
-        notificationService.sendToUser(member.getId(),
-                "تم إنشاء وصفة طبية جديدة لك من الدكتور " + doctor.getFullName());
+        // 🔔 إشعار للصيادلة (جميع الصيادلة)
+        clientRepo.findByRoles_Name(RoleName.PHARMACIST)
+                .forEach(pharmacist -> notificationService.sendToUser(
+                        pharmacist.getId(),
+                        "📋 لديك وصفة طبية جديدة من الدكتور " + doctor.getFullName() +
+                                " للمريض " + member.getFullName()
+                ));
+
+        // 🔔 إشعار للمريض
+        notificationService.sendToUser(
+                member.getId(),
+                "💊 تم إنشاء وصفة طبية جديدة لك من الدكتور " + doctor.getFullName()
+        );
 
         return prescriptionMapper.toDto(prescription);
     }
@@ -149,7 +156,6 @@ public class PrescriptionService {
     // Pharmacist verifies items
     @Transactional
     public PrescriptionDTO verify(UUID id, List<PrescriptionItemDTO> itemsWithPrices) {
-
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Client pharmacist = clientRepo.findByUsername(auth.getName())
                 .orElseThrow(() -> new NotFoundException("PHARMACIST_NOT_FOUND"));
@@ -160,12 +166,10 @@ public class PrescriptionService {
         double total = 0;
 
         for (PrescriptionItemDTO dto : itemsWithPrices) {
-
             PrescriptionItem item = prescriptionItemRepo.findById(dto.getId())
                     .orElseThrow(() -> new NotFoundException("ITEM_NOT_FOUND"));
 
-            PriceList med = item.getPriceList(); // 🔥 تم إصلاحه
-
+            PriceList med = item.getPriceList();
             double unionPrice = med.getPrice();
             double pharmacistPrice = dto.getPharmacistPrice();
             double finalPrice = Math.min(pharmacistPrice, unionPrice);
@@ -173,7 +177,6 @@ public class PrescriptionService {
             item.setPharmacistPrice(pharmacistPrice);
             item.setFinalPrice(finalPrice);
             item.setUpdatedAt(Instant.now());
-
             prescriptionItemRepo.save(item);
 
             total += finalPrice;
@@ -185,9 +188,20 @@ public class PrescriptionService {
         prescription.setUpdatedAt(Instant.now());
         prescriptionRepo.save(prescription);
 
+        // 🔔 إشعار للمريض
         notificationService.sendToUser(
                 prescription.getMember().getId(),
-                "تمت الموافقة على وصفتك. المجموع: " + total + " دينار");
+                "✅ تمت الموافقة على وصفتك من الصيدلي " + pharmacist.getFullName() +
+                        " - المجموع: " + total + " دينار"
+        );
+
+        // 🔔 إشعار للطبيب
+        notificationService.sendToUser(
+                prescription.getDoctor().getId(),
+                "✅ تمت الموافقة على وصفتك للمريض " + prescription.getMember().getFullName() +
+                        " من الصيدلي " + pharmacist.getFullName()
+
+        );
 
         return prescriptionMapper.toDto(prescription);
     }
@@ -195,7 +209,6 @@ public class PrescriptionService {
     // Pharmacist reject
     @Transactional
     public PrescriptionDTO reject(UUID id) {
-
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Client pharmacist = clientRepo.findByUsername(auth.getName())
                 .orElseThrow(() -> new NotFoundException("PHARMACIST_NOT_FOUND"));
@@ -206,12 +219,20 @@ public class PrescriptionService {
         prescription.setStatus(PrescriptionStatus.REJECTED);
         prescription.setPharmacist(pharmacist);
         prescription.setUpdatedAt(Instant.now());
-
         prescriptionRepo.save(prescription);
 
+        // 🔔 إشعار للمريض
         notificationService.sendToUser(
                 prescription.getMember().getId(),
-                "تم رفض وصفتك.");
+                "❌ تم رفض وصفتك من الصيدلي " + pharmacist.getFullName()
+        );
+
+        // 🔔 إشعار للطبيب
+        notificationService.sendToUser(
+                prescription.getDoctor().getId(),
+                "❌ تم رفض وصفتك للمريض " + prescription.getMember().getFullName() +
+                        " من الصيدلي " + pharmacist.getFullName()
+        );
 
         return prescriptionMapper.toDto(prescription);
     }
@@ -236,7 +257,6 @@ public class PrescriptionService {
         List<PrescriptionItem> newItems = new ArrayList<>();
 
         for (PrescriptionItemDTO itemDto : dto.getItems()) {
-
             PriceList med = priceListRepo.findById(itemDto.getMedicineId())
                     .orElseThrow(() -> new NotFoundException("MEDICINE_NOT_FOUND_IN_PRICE_LIST"));
 
@@ -247,7 +267,7 @@ public class PrescriptionService {
 
             PrescriptionItem item = PrescriptionItem.builder()
                     .prescription(prescription)
-                    .priceList(med) // 🔥 تصحيح
+                    .priceList(med)
                     .dosage(itemDto.getDosage())
                     .timesPerDay(itemDto.getTimesPerDay())
                     .expiryDate(expiry)
@@ -261,16 +281,39 @@ public class PrescriptionService {
         prescription.setItems(newItems);
         prescriptionRepo.save(prescription);
 
+        // 🔔 إشعار للمريض
+        notificationService.sendToUser(
+                prescription.getMember().getId(),
+                "✏️ تم تحديث وصفتك الطبية من الدكتور " + prescription.getDoctor().getFullName()
+        );
+
+        // 🔔 إشعار للصيادلة (في حالة وجود صيدلي مرتبط)
+        if (prescription.getPharmacist() != null) {
+            notificationService.sendToUser(
+                    prescription.getPharmacist().getId(),
+                    "✏️ تم تحديث الوصفة الطبية من الدكتور " + prescription.getDoctor().getFullName() +
+                            " للمريض " + prescription.getMember().getFullName()
+            );
+        }
+
         return prescriptionMapper.toDto(prescription);
     }
 
     // Doctor deletes prescription
+    @Transactional
     public void delete(UUID id) {
         Prescription prescription = prescriptionRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("PRESCRIPTION_NOT_FOUND"));
 
-        if (prescription.getStatus() != PrescriptionStatus.PENDING)
+        if (prescription.getStatus() != PrescriptionStatus.PENDING) {
             throw new IllegalStateException("CANNOT_DELETE_NON_PENDING");
+        }
+
+        // 🔔 إشعار للمريض
+        notificationService.sendToUser(
+                prescription.getMember().getId(),
+                "🗑️ تم حذف وصفتك الطبية من الدكتور " + prescription.getDoctor().getFullName()
+        );
 
         prescriptionRepo.delete(prescription);
     }
@@ -308,8 +351,8 @@ public class PrescriptionService {
     }
 
     // Pharmacist update profile
+    @Transactional
     public ClientDto updatePharmacistProfile(String username, UpdateUserDTO dto, MultipartFile universityCard) {
-
         Client pharmacist = clientRepo.findByUsername(username)
                 .orElseThrow(() -> new NotFoundException("PHARMACIST_NOT_FOUND"));
 
@@ -321,15 +364,12 @@ public class PrescriptionService {
             try {
                 String fileName = UUID.randomUUID() + "_" + universityCard.getOriginalFilename();
                 Path uploadPath = Paths.get("uploads/pharmacists");
-
                 if (!Files.exists(uploadPath))
                     Files.createDirectories(uploadPath);
 
                 Path filePath = uploadPath.resolve(fileName);
                 Files.copy(universityCard.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
                 pharmacist.setUniversityCardImage("/uploads/pharmacists/" + fileName);
-
             } catch (IOException e) {
                 throw new RuntimeException("IMAGE_UPLOAD_FAILED");
             }
@@ -337,7 +377,6 @@ public class PrescriptionService {
 
         pharmacist.setUpdatedAt(Instant.now());
         Client saved = clientRepo.save(pharmacist);
-
         return clientMapper.toDTO(saved);
     }
 
@@ -365,6 +404,7 @@ public class PrescriptionService {
                 .collect(Collectors.toList());
     }
 
+    // Get all pharmacists
     public List<ClientDto> getAllPharmacists() {
         return clientRepo.findByRoles_Name(RoleName.PHARMACIST)
                 .stream()
@@ -384,7 +424,6 @@ public class PrescriptionService {
 
         for (Prescription p : all) {
             for (PrescriptionItem item : p.getItems()) {
-
                 if (!item.getPriceList().getId().equals(medicineId)) continue;
 
                 if (p.getStatus() == PrescriptionStatus.PENDING) {
@@ -395,7 +434,6 @@ public class PrescriptionService {
 
                 if (p.getStatus() == PrescriptionStatus.VERIFIED &&
                         item.getExpiryDate().isAfter(Instant.now())) {
-
                     response.put("active", true);
                     response.put("status", "VERIFIED");
                     response.put("expiryDate", item.getExpiryDate());
@@ -406,4 +444,47 @@ public class PrescriptionService {
 
         return response;
     }
+
+    // Bill prescription
+    @Transactional
+    public PrescriptionDTO bill(UUID id) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Client pharmacist = clientRepo.findByUsername(auth.getName())
+                .orElseThrow(() -> new NotFoundException("PHARMACIST_NOT_FOUND"));
+
+        Prescription prescription = prescriptionRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("PRESCRIPTION_NOT_FOUND"));
+
+        // التحقق من أن الوصفة في حالة VERIFIED فقط
+        if (prescription.getStatus() != PrescriptionStatus.VERIFIED) {
+            throw new IllegalStateException("CAN_ONLY_BILL_VERIFIED_PRESCRIPTIONS");
+        }
+
+        // التحقق من أن الصيدلي هو نفسه الذي قام بالتحقق
+        if (prescription.getPharmacist() == null ||
+                !prescription.getPharmacist().getId().equals(pharmacist.getId())) {
+            throw new IllegalStateException("ONLY_VERIFYING_PHARMACIST_CAN_BILL");
+        }
+
+        prescription.setStatus(PrescriptionStatus.BILLED);
+        prescription.setUpdatedAt(Instant.now());
+        prescriptionRepo.save(prescription);
+
+        // 🔔 إشعار للمريض
+        notificationService.sendToUser(
+                prescription.getMember().getId(),
+                "💊 تم صرف الأدوية من وصفتك الطبية بواسطة الصيدلي " + pharmacist.getFullName() +
+                        " - المجموع: " + prescription.getTotalPrice() + " دينار. شكراً لاستخدامك خدماتنا."
+        );
+
+        // 🔔 إشعار للطبيب
+        notificationService.sendToUser(
+                prescription.getDoctor().getId(),
+                "💊 تم صرف الأدوية من وصفتك للمريض " + prescription.getMember().getFullName() +
+                        " بواسطة الصيدلي " + pharmacist.getFullName()
+        );
+
+        return prescriptionMapper.toDto(prescription);
+    }
 }
+

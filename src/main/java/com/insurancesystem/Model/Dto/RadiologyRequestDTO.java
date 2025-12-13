@@ -26,7 +26,8 @@ public class RadiologyRequestDTO {
 
     private UUID memberId;
     private String memberName;
-
+    private String employeeId;
+    private String universityCardImage;
     private UUID radiologistId;
     private String radiologistName;
 
@@ -39,4 +40,7 @@ public class RadiologyRequestDTO {
 
     private Instant createdAt;
     private Instant updatedAt;
+
+    private String diagnosis;
+    private String treatment;
 }

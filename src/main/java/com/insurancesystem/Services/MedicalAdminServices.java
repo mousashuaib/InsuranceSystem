@@ -1,19 +1,17 @@
 package com.insurancesystem.Services;
 
 import com.insurancesystem.Exception.NotFoundException;
-import com.insurancesystem.Model.Dto.ClientDto;
 import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.Entity.Enums.MemberStatus;
 import com.insurancesystem.Model.Entity.Enums.RoleName;
 import com.insurancesystem.Model.MapStruct.ClientMapper;
-import com.insurancesystem.Repository.ClaimRepository;
 import com.insurancesystem.Repository.ClientRepository;
+import com.insurancesystem.Repository.HealthcareProviderClaimRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,7 +19,7 @@ import java.util.stream.Collectors;
 public class MedicalAdminServices {
     private final ClientRepository clientRepository;
     private final ClientMapper clientMapper;
-    private final ClaimRepository claimRepository; // ✅ نضيفها هنا
+    private final HealthcareProviderClaimRepository claimRepository; // ✅ نضيفها هنا
 
     // ✅ تفعيل / تعطيل مستخدم
     public void toggleUserStatus(UUID id) {
