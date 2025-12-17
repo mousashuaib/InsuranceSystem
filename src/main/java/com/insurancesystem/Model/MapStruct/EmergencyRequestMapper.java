@@ -21,6 +21,7 @@ public interface EmergencyRequestMapper {
     @Mapping(target = "approvedAt", source = "approvedAt")
     @Mapping(target = "rejectedAt", source = "rejectedAt")
     @Mapping(target = "rejectionReason", source = "rejectionReason")
+    @Mapping(source = "member.universityCardImage", target = "universityCardImage")
     EmergencyRequestDTO toDto(EmergencyRequest entity);
 
     @Mapping(target = "member", ignore = true)

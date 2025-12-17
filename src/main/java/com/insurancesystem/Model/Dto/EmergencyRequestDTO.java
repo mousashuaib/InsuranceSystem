@@ -15,6 +15,7 @@ public class EmergencyRequestDTO {
     private String memberName;
     private String description;
     private String location;
+    private String universityCardImage;
     private String contactPhone;
     private LocalDate incidentDate;
     private String notes;

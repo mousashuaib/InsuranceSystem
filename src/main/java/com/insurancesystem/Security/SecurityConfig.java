@@ -35,7 +35,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/uploads/**",
-                                "/ws-chat/**"      // 👈 السماح بالـ WebSocket endpoint
+                                "/ws-chat/**",      // 👈 السماح بالـ WebSocket endpoint
+                                "/api/doctor-specializations"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

@@ -116,7 +116,7 @@ public class ClientController {
      * @return Client information (fullName, department, faculty, specialization, etc.)
      */
     @GetMapping("/search/employeeId/{employeeId}")
-    @PreAuthorize("hasAnyRole('RADIOLOGIST','LAB_TECH','PHARMACIST','DOCTOR', 'ADMIN', 'INSURANCE_MANAGER')")
+    @PreAuthorize("hasAnyRole('RADIOLOGIST','LAB_TECH','PHARMACIST','DOCTOR', 'ADMIN', 'INSURANCE_MANAGER', 'MEDICAL_ADMIN')")
     public ResponseEntity<?> findByEmployeeId(@PathVariable String employeeId) {
         try {
             if (employeeId == null || employeeId.trim().isEmpty()) {

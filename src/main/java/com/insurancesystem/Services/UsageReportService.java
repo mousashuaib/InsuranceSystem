@@ -37,9 +37,9 @@ public class UsageReportService {
 
                 // Emergency Requests
                 .totalEmergencyRequests(emergencyRepo.count())
-                .approvedEmergencyRequests(emergencyRepo.findByStatus(EmergencyStatus.APPROVED).size())
-                .rejectedEmergencyRequests(emergencyRepo.findByStatus(EmergencyStatus.REJECTED).size())
-                .pendingEmergencyRequests(emergencyRepo.findByStatus(EmergencyStatus.PENDING).size())
+                .approvedEmergencyRequests(emergencyRepo.findByStatus(EmergencyStatus.APPROVED_BY_MEDICAL).size())
+                .rejectedEmergencyRequests(emergencyRepo.findByStatus(EmergencyStatus.REJECTED_BY_MEDICAL).size())
+                .pendingEmergencyRequests(emergencyRepo.findByStatus(EmergencyStatus.PENDING_MEDICAL).size())
 
                 // Medical Records
                 .totalMedicalRecords(recordRepo.count())
