@@ -8,12 +8,16 @@ import com.insurancesystem.Model.Dto.*;
 
 import com.insurancesystem.Model.Entity.Client;
 
+import com.insurancesystem.Model.Entity.Enums.ClaimStatus;
+import com.insurancesystem.Model.Entity.Enums.ReportType;
 import com.insurancesystem.Repository.ClientRepository;
 
 import com.insurancesystem.Services.HealthcareProviderClaimService;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 
 import org.springframework.http.MediaType;
@@ -30,6 +34,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
 
 @RestController
@@ -267,32 +274,9 @@ public class HealthcareProviderClaimController {
 
     }
 
-    // ============================================================
-
-    // Coordination Admin → Claims Awaiting Admin Review
-
-    // ============================================================
 
     @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
-
-    @GetMapping("/admin-review")
-
-    public ResponseEntity<?> adminReview() {
-
-        return ResponseEntity.ok(claimService.getClaimsForAdminReview());
-
-    }
-
-    // ============================================================
-
-    // Final Decisions → Manager or Medical Admin
-
-    // ============================================================
-
-    @PreAuthorize("hasAnyAuthority('ROLE_INSURANCE_MANAGER','ROLE_MEDICAL_ADMIN')")
-
     @GetMapping("/final-decisions")
-
     public ResponseEntity<?> finalDecisions() {
 
         return ResponseEntity.ok(claimService.getFinalDecisions());
@@ -361,138 +345,82 @@ public class HealthcareProviderClaimController {
 
     }
 
-    // ============================================================
+    @PreAuthorize("hasAnyAuthority('ROLE_COORDINATION_ADMIN','ROLE_INSURANCE_MANAGER')")
+    @GetMapping(value = "/reports/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> exportReportsPdf(
 
-    // Coordination Admin → Approve
+            @RequestParam ReportType type,
+            @RequestParam(required = false) ClaimStatus status,
 
-    // ============================================================
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate from,
 
-    @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
-
-    @PatchMapping("/{id}/approve-admin")
-
-    public ResponseEntity<?> approveAdmin(@PathVariable UUID id, Authentication auth) {
-
-        try {
-
-            Client reviewer = clientRepo.findByEmail(auth.getName().toLowerCase())
-                    .orElseThrow(() -> new NotFoundException("Reviewer not found"));
-
-            return ResponseEntity.ok(claimService.approveAdmin(id, reviewer.getId()));
-
-
-        } catch (NotFoundException e) {
-
-            return ResponseEntity.status(404).body(Map.of("message", e.getMessage()));
-
-        }
-
-    }
-
-    // ============================================================
-
-    // Coordination Admin → Reject
-
-    // ============================================================
-
-    @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
-
-    @PatchMapping("/{id}/reject-admin")
-
-    public ResponseEntity<?> rejectAdmin(
-
-            @PathVariable UUID id,
-
-            @RequestBody RejectClaimDTO dto,
-
-            Authentication auth) {
-
-        try {
-
-            Client reviewer = clientRepo.findByEmail(auth.getName().toLowerCase())
-                    .orElseThrow(() -> new NotFoundException("Reviewer not found"));
-
-            return ResponseEntity.ok(claimService.rejectAdmin(id, dto.getReason(), reviewer.getId()));
-
-
-        } catch (NotFoundException e) {
-
-            return ResponseEntity.status(404).body(Map.of("message", e.getMessage()));
-
-        }
-
-    }
-
-    // ============================================================
-
-    // Coordination Admin + Insurance Manager → Final Claims Only
-
-    // ============================================================
-
-    @PreAuthorize("hasAnyAuthority('ROLE_COORDINATION_ADMIN', 'ROLE_INSURANCE_MANAGER')")
-
-    @GetMapping("/final")
-
-    public ResponseEntity<?> finalClaims() {
-
-        return ResponseEntity.ok(
-
-                claimService.getFinalizedClaims()
-
-        );
-
-    }
-
-    // ============================================================
-
-// Coordination Admin → Batch Approve
-
-// ============================================================
-
-    @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
-
-    @PatchMapping("/admin/approve-batch")
-
-    public ResponseEntity<?> approveAdminBatch(
-
-            @RequestBody AdminBatchApproveDTO dto,
-
-            Authentication auth
-
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate to
     ) {
 
-        Client reviewer = clientRepo.findByEmail(auth.getName().toLowerCase())
-                .orElseThrow(() -> new NotFoundException("Reviewer not found"));
-
-        claimService.approveAdminBatch(dto.getClaimIds(), reviewer.getId());
-        return ResponseEntity.ok(Map.of("message", "Batch approval completed successfully"));
-
-
-
-    }
-
-    // ============================================================
-
-// Coordination Admin → Export Approved Claims (CSV)
-
-// ============================================================
-
-    @PreAuthorize("hasAnyAuthority('ROLE_COORDINATION_ADMIN','ROLE_INSURANCE_MANAGER')")
-
-    @GetMapping("/export/approved")
-
-    public ResponseEntity<byte[]> exportApprovedClaimsCsv() {
-
-        byte[] csvData = claimService.exportApprovedClaimsCsv();
+        byte[] pdf = claimService.exportReportPdf(
+                type,
+                status,
+                from,
+                to
+        );
 
         return ResponseEntity.ok()
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=report_" + type.name().toLowerCase() + ".pdf"
+                )
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
+    }
 
-                .header("Content-Disposition", "attachment; filename=approved_claims.csv")
 
-                .header("Content-Type", "text/csv")
+    @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
+    @PostMapping(value = "/admin/create-direct", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> createClaimByAdmin(
+            Authentication auth,
+            @RequestPart("data") String json,
+            @RequestPart(value = "document", required = false) MultipartFile document
+    ) throws IOException {
 
-                .body(csvData);
+        Client admin = clientRepo.findByEmail(auth.getName().toLowerCase())
+                .orElseThrow(() -> new NotFoundException("Admin not found"));
 
+        CreateHealthcareProviderClaimDTO dto =
+                objectMapper.readValue(json, CreateHealthcareProviderClaimDTO.class);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(claimService.createClaimByCoordinationAdmin(
+                        admin.getId(),
+                        dto,
+                        document
+                ));
+    }
+
+    @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
+    @PatchMapping("/{id}/return-to-medical")
+    public ResponseEntity<?> returnToMedical(
+            @PathVariable UUID id,
+            @RequestBody RejectReasonDTO dto,
+            Authentication auth
+    ) {
+        Client reviewer = clientRepo.findByEmail(auth.getName().toLowerCase())
+                .orElseThrow(() -> new NotFoundException("Coordinator not found"));
+
+        return ResponseEntity.ok(
+                claimService.returnToMedical(id, dto.getReason(), reviewer.getId())
+        );
+    }
+
+    @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
+    @GetMapping("/coordination-review")
+    public ResponseEntity<?> coordinationReviewList() {
+        return ResponseEntity.ok(
+                claimService.getClaimsForCoordinationReview()
+        );
     }
 
 }

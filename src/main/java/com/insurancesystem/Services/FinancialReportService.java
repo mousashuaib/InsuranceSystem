@@ -17,7 +17,7 @@ public class FinancialReportService {
     private final HealthcareProviderClaimRepository claimRepo;
 
     public FinancialReportDto generateReport() {
-        double totalExpenses = claimRepo.sumAmountByStatus(ClaimStatus.APPROVED);
+        double totalExpenses = claimRepo.sumAmountByStatus(ClaimStatus.APPROVED_FINAL);
 
         List<FinancialReportDto.TopProvider> topProviders = claimRepo.findTopProviders()
                 .stream()

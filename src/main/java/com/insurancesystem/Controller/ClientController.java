@@ -1,6 +1,7 @@
 package com.insurancesystem.Controller;
 
 import com.insurancesystem.Model.Dto.ClientDto;
+import com.insurancesystem.Model.Dto.CoordinatorClientLookupDTO;
 import com.insurancesystem.Model.Dto.RejectReasonDTO;
 import com.insurancesystem.Model.Dto.UpdateUserDTO;
 import com.insurancesystem.Model.Entity.Client;
@@ -192,5 +193,15 @@ public class ClientController {
         clientServices.clearUniversityCardsByEmail(email);
         return ResponseEntity.noContent().build();
     }
+    @PreAuthorize("hasRole('COORDINATION_ADMIN')")
+    @PostMapping("/coordinator/lookup-for-claim")
+    public ResponseEntity<ClientDto> lookupClientForCoordinatorClaim(
+            @RequestBody CoordinatorClientLookupDTO dto
+    ) {
+        return ResponseEntity.ok(
+                clientServices.findClientForCoordinatorClaim(dto)
+        );
+    }
+
 
 }

@@ -37,5 +37,5 @@ public class HealthcareProviderClaimMedicalDTO {
 
     // Medical Admin
     private String medicalReviewerName;
-    private String medicalReviewedAt;
+    private Instant medicalReviewedAt;
 }

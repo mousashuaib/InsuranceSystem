@@ -29,7 +29,11 @@ public class DashboardController {
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalClients", clientRepository.count());
         stats.put("totalPolicies", policyRepository.count());
-        stats.put("pendingClaims", claimRepository.countByStatus(ClaimStatus.PENDING));
+        stats.put(
+                "pendingClaims",
+                claimRepository.countByStatus(ClaimStatus.PENDING_MEDICAL)
+                        + claimRepository.countByStatus(ClaimStatus.RETURNED_FOR_REVIEW)
+        );
         return ResponseEntity.ok(stats);
     }
 }

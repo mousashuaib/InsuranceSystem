@@ -1,12 +1,9 @@
 package com.insurancesystem.Model.Entity.Enums;
 
 public enum ClaimStatus {
-    APPROVED_BY_MEDICAL, // تمت الموافقة الطبية
-    REJECTED_BY_MEDICAL, // تم الرفض الطبي
-    AWAITING_ADMIN_REVIEW, // بانتظار المراجعة الإدارية
-    PENDING_MEDICAL,
+    PENDING_MEDICAL,   // أول مرة
+    APPROVED_FINAL,           // موافقة طبية نهائية
+    REJECTED_FINAL,           // رفض نهائي
+    RETURNED_FOR_REVIEW       // أُعيدت من المنسق للطبيب
 
-    PENDING, // بانتظار المراجعة الطبية
-    APPROVED, // تمت الموافقة النهائية
-    REJECTED ,// الرفض الإداري النهائي
-    }
+}

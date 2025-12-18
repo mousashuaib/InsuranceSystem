@@ -28,6 +28,9 @@ public interface HealthcareProviderClaimMapper {
     @Mapping(source = "healthcareProvider.fullName", target = "providerName")
     @Mapping(source = "diagnosis", target = "diagnosis")
     @Mapping(source = "treatmentDetails", target = "treatmentDetails")
+    // ✅ المهم
+    @Mapping(target = "medicalReviewerName", source = "medicalReviewerName")
+    @Mapping(target = "medicalReviewedAt", source = "medicalReviewedAt")
     HealthcareProviderClaimDTO toDto(HealthcareProviderClaim claim);
 
 
@@ -41,8 +44,7 @@ public interface HealthcareProviderClaimMapper {
     @Mapping(source = "invoiceImagePath", target = "invoiceImagePath")
     @Mapping(source = "clientId", target = "clientId")
     @Mapping(source = "medicalReviewerName", target = "medicalReviewerName")
-    @Mapping(target = "medicalReviewedAt",
-            expression = "java(claim.getMedicalReviewedAt() != null ? claim.getMedicalReviewedAt().toString() : null)")
+    @Mapping(source = "medicalReviewedAt", target = "medicalReviewedAt")
     HealthcareProviderClaimMedicalDTO toMedicalDto(HealthcareProviderClaim claim);
 
 }

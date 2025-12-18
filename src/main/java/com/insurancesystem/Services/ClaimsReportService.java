@@ -19,18 +19,32 @@ public class ClaimsReportService {
 
     public ClaimsReportDto generateReport() {
         long totalClaims = claimRepo.count();
-        long approvedClaims = claimRepo.countByStatus(ClaimStatus.APPROVED);
-        long rejectedClaims = claimRepo.countByStatus(ClaimStatus.REJECTED);
-        long pendingClaims = claimRepo.countByStatus(ClaimStatus.PENDING);
 
-        List<HealthcareProviderClaimDTO> approvedList = claimRepo.findByStatus(ClaimStatus.APPROVED)
-                .stream().map(claimMapper::toDto).toList();
+        long approvedClaims =
+                claimRepo.countByStatus(ClaimStatus.APPROVED_FINAL);
 
-        List<HealthcareProviderClaimDTO> rejectedList = claimRepo.findByStatus(ClaimStatus.REJECTED)
-                .stream().map(claimMapper::toDto).toList();
+        long rejectedClaims =
+                claimRepo.countByStatus(ClaimStatus.REJECTED_FINAL);
 
-        List<HealthcareProviderClaimDTO> pendingList = claimRepo.findByStatus(ClaimStatus.PENDING)
-                .stream().map(claimMapper::toDto).toList();
+        long pendingClaims =
+                claimRepo.countByStatus(ClaimStatus.PENDING_MEDICAL)
+                        + claimRepo.countByStatus(ClaimStatus.RETURNED_FOR_REVIEW);
+
+        List<HealthcareProviderClaimDTO> approvedList =
+                claimRepo.findByStatus(ClaimStatus.APPROVED_FINAL)
+                        .stream().map(claimMapper::toDto).toList();
+
+        List<HealthcareProviderClaimDTO> rejectedList =
+                claimRepo.findByStatus(ClaimStatus.REJECTED_FINAL)
+                        .stream().map(claimMapper::toDto).toList();
+
+        List<HealthcareProviderClaimDTO> pendingList =
+                claimRepo.findByStatusIn(
+                        List.of(
+                                ClaimStatus.PENDING_MEDICAL,
+                                ClaimStatus.RETURNED_FOR_REVIEW
+                        )
+                ).stream().map(claimMapper::toDto).toList();
 
         double totalApprovedAmount = approvedList.stream()
                 .mapToDouble(c -> c.getAmount() != null ? c.getAmount() : 0)
@@ -51,5 +65,4 @@ public class ClaimsReportService {
                 .rejectedList(rejectedList)
                 .pendingList(pendingList)
                 .build();
-    }
-}
+    }}

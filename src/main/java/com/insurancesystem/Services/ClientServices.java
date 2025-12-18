@@ -3,6 +3,7 @@ package com.insurancesystem.Services;
 import com.insurancesystem.Exception.BadRequestException;
 import com.insurancesystem.Exception.NotFoundException;
 import com.insurancesystem.Model.Dto.ClientDto;
+import com.insurancesystem.Model.Dto.CoordinatorClientLookupDTO;
 import com.insurancesystem.Model.Dto.UpdateUserDTO;
 import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.Entity.Enums.MemberStatus;
@@ -285,6 +286,38 @@ public class ClientServices {
         client.getUniversityCardImages().clear();
         client.setUpdatedAt(Instant.now());
         clientRepo.save(client);
+    }
+    public ClientDto findClientForCoordinatorClaim(
+            CoordinatorClientLookupDTO dto
+    ) {
+
+        if (
+                (dto.getFullName() == null || dto.getFullName().isBlank()) &&
+                        (dto.getEmployeeId() == null || dto.getEmployeeId().isBlank()) &&
+                        (dto.getNationalId() == null || dto.getNationalId().isBlank()) &&
+                        (dto.getPhone() == null || dto.getPhone().isBlank())
+        ) {
+            throw new BadRequestException("At least one search field is required");
+        }
+
+        Client client = clientRepo.findForCoordinatorClaim(
+                dto.getFullName(),
+                dto.getEmployeeId(),
+                dto.getNationalId(),
+                dto.getPhone()
+        ).orElseThrow(() ->
+                new NotFoundException("No matching client found")
+        );
+
+        // تأكيد أن المستخدم مؤمن
+        boolean isInsuranceClient = client.getRoles().stream()
+                .anyMatch(r -> r.getName() == RoleName.INSURANCE_CLIENT);
+
+        if (!isInsuranceClient) {
+            throw new BadRequestException("User is not an insurance client");
+        }
+
+        return clientMapper.toDTO(client);
     }
 
 

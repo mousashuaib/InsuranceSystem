@@ -20,9 +20,17 @@ public class UsageReportService {
         return UsageReportDto.builder()
                 // Claims
                 .totalClaims(claimRepo.count())
-                .approvedClaims(claimRepo.countByStatus(ClaimStatus.APPROVED))
-                .rejectedClaims(claimRepo.countByStatus(ClaimStatus.REJECTED))
-                .pendingClaims(claimRepo.countByStatus(ClaimStatus.PENDING))
+                .approvedClaims(
+                        claimRepo.countByStatus(ClaimStatus.APPROVED_FINAL)
+                )
+                .rejectedClaims(
+                        claimRepo.countByStatus(ClaimStatus.REJECTED_FINAL)
+                )
+                .pendingClaims(
+                        claimRepo.countByStatus(ClaimStatus.PENDING_MEDICAL)
+                                + claimRepo.countByStatus(ClaimStatus.RETURNED_FOR_REVIEW)
+                )
+
 
                 // Prescriptions
                 .totalPrescriptions(prescriptionRepo.count())
