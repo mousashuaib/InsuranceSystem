@@ -51,17 +51,18 @@ public class SearchProfile {
     private String rejectionReason; // ✅ سبب الرفض (إن وجد)
 
     // ✅ New Document Fields
-    @Column(nullable = false, length = 300)
-    private String medicalLicense; // رخصة مزاولة المهنة (Required)
+    @Column(nullable = true, length = 300)
+    private String medicalLicense;
 
-    @Column(nullable = false, length = 300)
-    private String universityDegree; // الشهادة الجامعية (Required)
+    @Column(nullable = true, length = 300)
+    private String universityDegree;
 
-    @Column(length = 300)
+    @Column(nullable = true, length = 300)
+    private String idOrPassportCopy;
+    @Column(nullable = true, length = 300)
+
     private String clinicRegistration; // تسجيل العيادة (Optional)
 
-    @Column(nullable = false, length = 300)
-    private String idOrPassportCopy; // نسخة الهوية / الجواز (Required)
 
     public String getPhone() {
         return contactInfo;

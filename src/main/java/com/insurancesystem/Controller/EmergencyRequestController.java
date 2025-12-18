@@ -35,8 +35,14 @@ public class EmergencyRequestController {
     @PreAuthorize("hasRole('DOCTOR')")
     public ResponseEntity<?> createEmergencyRequest(Authentication auth, @Valid @RequestBody CreateEmergencyRequestDTO dto) {
         try {
+
+            String username = auth.getName();
+
+
+
             String email = auth.getName().toLowerCase();
             Client doctor = clientRepo.findByEmail(email)
+
                     .orElseThrow(() -> new NotFoundException("DOCTOR_NOT_FOUND"));
 
 
@@ -57,8 +63,14 @@ public class EmergencyRequestController {
     @PreAuthorize("hasRole('INSURANCE_CLIENT')")
     public ResponseEntity<?> getMemberEmergencyRequests(Authentication auth) {
         try {
+
+            String username = auth.getName();
+
+
+
             String email = auth.getName().toLowerCase();
             Client client = clientRepo.findByEmail(email)
+
                     .orElseThrow(() -> new NotFoundException("CLIENT_NOT_FOUND"));
 
 
@@ -75,8 +87,14 @@ public class EmergencyRequestController {
     @PreAuthorize("hasRole('DOCTOR')")
     public ResponseEntity<?> getDoctorEmergencyRequests(Authentication auth) {
         try {
+
+            String username = auth.getName();
+
+
+
             String email = auth.getName().toLowerCase();
             Client doctor = clientRepo.findByEmail(email)
+
                     .orElseThrow(() -> new NotFoundException("DOCTOR_NOT_FOUND"));
 
 
@@ -100,8 +118,14 @@ public class EmergencyRequestController {
             @PathVariable UUID id
     ) {
         try {
+
+            String username = auth.getName();
+
+
+
             String email = auth.getName().toLowerCase();
             Client doctor = clientRepo.findByEmail(email)
+
                     .orElseThrow(() -> new NotFoundException("DOCTOR_NOT_FOUND"));
 
 
@@ -117,9 +141,9 @@ public class EmergencyRequestController {
         }
     }
 
-    // ✅ Manager/Emergency Manager gets all requests
+    // ✅ Emergency Manager/Medical Admin gets all requests
     @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER', 'EMERGENCY_MANAGER')")
+    @PreAuthorize("hasAnyRole('EMERGENCY_MANAGER', 'MEDICAL_ADMIN')")
     public ResponseEntity<?> getAllEmergencyRequests() {
         try {
             return ResponseEntity.ok(emergencyService.getAllEmergencyRequests());
@@ -130,9 +154,9 @@ public class EmergencyRequestController {
         }
     }
 
-    // ✅ Manager approves emergency request
+    // ✅ Emergency Manager/Medical Admin approves emergency request
     @PatchMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER', 'EMERGENCY_MANAGER')")
+    @PreAuthorize("hasAnyRole('EMERGENCY_MANAGER', 'MEDICAL_ADMIN')")
     public ResponseEntity<?> approveEmergencyRequest(@PathVariable UUID id) {
         try {
             return ResponseEntity.ok(emergencyService.approveEmergencyRequest(id));
@@ -147,9 +171,9 @@ public class EmergencyRequestController {
         }
     }
 
-    // ✅ Manager rejects emergency request
+    // ✅ Emergency Manager/Medical Admin rejects emergency request
     @PatchMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER', 'EMERGENCY_MANAGER')")
+    @PreAuthorize("hasAnyRole('EMERGENCY_MANAGER', 'MEDICAL_ADMIN')")
     public ResponseEntity<?> rejectEmergencyRequest(
             @PathVariable UUID id,
             @Valid @RequestBody RejectEmergencyDTO dto
@@ -166,5 +190,6 @@ public class EmergencyRequestController {
             return ResponseEntity.status(400).body(errorResponse);
         }
     }
+
 }
 

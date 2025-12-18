@@ -61,11 +61,12 @@ public class EmergencyRequestService {
                 .contactPhone(dto.getContactPhone())
                 .incidentDate(dto.getIncidentDate())
                 .notes(dto.getNotes())
-                .status(EmergencyStatus.PENDING)
+                .status(EmergencyStatus.PENDING_MEDICAL)  // ✅ Changed from PENDING to PENDING_MEDICAL
                 .submittedAt(Instant.now())
                 .build();
 
         emergency = emergencyRepo.save(emergency);
+
         log.info("✅ Emergency request saved with ID: {}", emergency.getId());
 
         // 🔔 إشعار للعميل
@@ -74,16 +75,16 @@ public class EmergencyRequestService {
                 "تم استلام طلب الطوارئ الخاص بك وهو الآن قيد المراجعة."
         );
 
-        // 🔔 إشعار لمديري الطوارئ
-        notificationService.sendToRole(
-                RoleName.EMERGENCY_MANAGER,
-                "طلب طوارئ جديد من " + member.getFullName() +
-                        " في " + dto.getLocation()
+        // 🔔 إشعار للدكتور الذي أنشأ الطلب
+        notificationService.sendToUser(
+                doctorId,
+                "✅ تم إنشاء طلب طوارئ بنجاح للمريض " + member.getFullName() +
+                        " في " + dto.getLocation() + " - في انتظار المراجعة الطبية"
         );
 
-        // 🔔 إشعار لمديري التأمين
+        // 🔔 إشعار للمدير الطبي
         notificationService.sendToRole(
-                RoleName.INSURANCE_MANAGER,
+                RoleName.MEDICAL_ADMIN,
                 "طلب طوارئ جديد من " + member.getFullName() +
                         " في " + dto.getLocation()
         );
@@ -109,6 +110,7 @@ public class EmergencyRequestService {
                 .toList();
 
         log.info("✅ Found {} emergency requests for member", requests.size());
+
         return requests;
     }
 
@@ -122,6 +124,7 @@ public class EmergencyRequestService {
                 .toList();
 
         log.info("✅ Found {} total emergency requests", requests.size());
+
         return requests;
     }
 
@@ -143,6 +146,7 @@ public class EmergencyRequestService {
                 .collect(Collectors.toList());
 
         log.info("✅ Found {} emergency requests for doctor: {}", requests.size(), doctorId);
+
         return requests;
     }
 
@@ -165,6 +169,7 @@ public class EmergencyRequestService {
                 });
 
         log.info("✅ Found emergency request: {}", requestId);
+
         return emergencyRequestMapper.toDto(emergency);
     }
 
@@ -179,12 +184,12 @@ public class EmergencyRequestService {
                     return new NotFoundException("EMERGENCY_REQUEST_NOT_FOUND");
                 });
 
-        if (emergency.getStatus() != EmergencyStatus.PENDING) {
+        if (emergency.getStatus() != EmergencyStatus.PENDING_MEDICAL) {  // ✅ Changed from PENDING to PENDING_MEDICAL
             log.warn("⚠️ Emergency request {} is already processed", id);
             throw new BadRequestException("REQUEST_ALREADY_PROCESSED");
         }
 
-        emergency.setStatus(EmergencyStatus.APPROVED);
+        emergency.setStatus(EmergencyStatus.APPROVED_BY_MEDICAL);  // ✅ Changed from APPROVED to APPROVED_BY_MEDICAL
         emergency.setApprovedAt(Instant.now());
         emergencyRepo.save(emergency);
 
@@ -193,7 +198,14 @@ public class EmergencyRequestService {
         // 🔔 إشعار للعميل
         notificationService.sendToUser(
                 emergency.getMember().getId(),
-                "تمت الموافقة على طلب الطوارئ الخاص بك."
+                "✅ تمت الموافقة على طلب الطوارئ الخاص بك."
+        );
+
+        // 🔔 إشعار للدكتور الذي أنشأ الطلب
+        notificationService.sendToUser(
+                emergency.getDoctorId(),
+                "✅ تمت الموافقة الطبية على طلب الطوارئ للمريض " + emergency.getMember().getFullName() +
+                        " في " + emergency.getLocation()
         );
 
         return emergencyRequestMapper.toDto(emergency);
@@ -210,14 +222,15 @@ public class EmergencyRequestService {
                     return new NotFoundException("EMERGENCY_REQUEST_NOT_FOUND");
                 });
 
-        if (emergency.getStatus() != EmergencyStatus.PENDING) {
+        if (emergency.getStatus() != EmergencyStatus.PENDING_MEDICAL) {  // ✅ Changed from PENDING to PENDING_MEDICAL
             log.warn("⚠️ Emergency request {} is already processed", id);
             throw new BadRequestException("REQUEST_ALREADY_PROCESSED");
         }
 
-        emergency.setStatus(EmergencyStatus.REJECTED);
+        emergency.setStatus(EmergencyStatus.REJECTED_BY_MEDICAL);  // ✅ Changed from REJECTED to REJECTED_BY_MEDICAL
         emergency.setRejectedAt(Instant.now());
         emergency.setRejectionReason(dto.getReason());
+
         emergencyRepo.save(emergency);
 
         log.info("✅ Emergency request {} rejected with reason: {}", id, dto.getReason());
@@ -225,10 +238,18 @@ public class EmergencyRequestService {
         // 🔔 إشعار للعميل
         notificationService.sendToUser(
                 emergency.getMember().getId(),
-                "تم رفض طلب الطوارئ. السبب: " + dto.getReason()
+                "❌ تم رفض طلب الطوارئ. السبب: " + dto.getReason()
+        );
+
+        // 🔔 إشعار للدكتور الذي أنشأ الطلب
+        notificationService.sendToUser(
+                emergency.getDoctorId(),
+                "❌ تم رفض طلب الطوارئ للمريض " + emergency.getMember().getFullName() +
+                        " في " + emergency.getLocation() + ". السبب: " + dto.getReason()
         );
 
         return emergencyRequestMapper.toDto(emergency);
     }
+
 }
 

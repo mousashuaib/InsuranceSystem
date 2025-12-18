@@ -13,11 +13,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ClientRepository extends JpaRepository<Client, UUID> {
+
     boolean existsByEmployeeId(String employeeId);
 
-
     Optional<Client> findByEmail(String email);
-
 
     boolean existsByNationalId(String nationalId);
 
@@ -36,13 +35,13 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
     Optional<Client> findByEmployeeId(String employeeId);
 
     @Query("""
-    SELECT c FROM Client c
-    WHERE
-        (:fullName IS NULL OR LOWER(c.fullName) LIKE LOWER(CONCAT('%', :fullName, '%')))
-    AND (:employeeId IS NULL OR c.employeeId = :employeeId)
-    AND (:nationalId IS NULL OR c.nationalId = :nationalId)
-    AND (:phone IS NULL OR c.phone = :phone)
-""")
+        SELECT c FROM Client c
+        WHERE
+            (:fullName IS NULL OR LOWER(c.fullName) LIKE LOWER(CONCAT('%', :fullName, '%')))
+        AND (:employeeId IS NULL OR c.employeeId = :employeeId)
+        AND (:nationalId IS NULL OR c.nationalId = :nationalId)
+        AND (:phone IS NULL OR c.phone = :phone)
+    """)
     Optional<Client> findForCoordinatorClaim(
             @Param("fullName") String fullName,
             @Param("employeeId") String employeeId,
@@ -50,6 +49,4 @@ public interface ClientRepository extends JpaRepository<Client, UUID> {
             @Param("phone") String phone
     );
 
-
 }
-

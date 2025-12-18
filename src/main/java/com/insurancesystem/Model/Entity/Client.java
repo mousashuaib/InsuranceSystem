@@ -1,7 +1,13 @@
 package com.insurancesystem.Model.Entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import com.insurancesystem.Model.Entity.Enums.MemberStatus;
+import com.insurancesystem.Model.Entity.Enums.RoleName;
+import com.insurancesystem.Model.Entity.Enums.RoleRequestStatus;
+
 import com.insurancesystem.Model.Entity.Enums.*;
+
 import jakarta.persistence.*;
 import lombok.*;
 

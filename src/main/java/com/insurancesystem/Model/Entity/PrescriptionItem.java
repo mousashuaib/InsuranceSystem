@@ -18,7 +18,7 @@ public class PrescriptionItem {
     @JoinColumn(name = "prescription_id", nullable = false)
     private Prescription prescription;
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "price_list_id", nullable = false)
+    @JoinColumn(name = "price_list_id", nullable = true) // Temporarily allow NULL values
     private PriceList priceList;
 
 

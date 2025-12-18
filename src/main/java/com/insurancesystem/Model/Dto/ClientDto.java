@@ -1,6 +1,13 @@
 package com.insurancesystem.Model.Dto;
 
+
+import com.insurancesystem.Model.Entity.DoctorSpecializationEntity;
+import com.insurancesystem.Model.Entity.Enums.MemberStatus;
+import com.insurancesystem.Model.Entity.Enums.RoleName;
+import com.insurancesystem.Model.Entity.Enums.RoleRequestStatus;
+
 import com.insurancesystem.Model.Entity.Enums.*;
+
 import lombok.*;
 
 import java.time.Instant;
@@ -43,7 +50,7 @@ public class ClientDto {
     private String radiologyCode;
     private String radiologyName;
     private String radiologyLocation;
-    private DoctorSpecialization doctorSpecialization;
+    private DoctorSpecializationEntity doctorSpecialization;
     // Role Request Information
     private RoleName requestedRole;
     private RoleRequestStatus roleRequestStatus;
