@@ -148,7 +148,8 @@ public class ClientController {
             response.put("employeeId", clientDto.getEmployeeId());
             response.put("email", clientDto.getEmail());
             response.put("phone", clientDto.getPhone());
-
+            response.put("gender",clientDto.getGender());
+            response.put("dateofbirth",clientDto.getDateOfBirth());
             return ResponseEntity.ok(response);
 
         } catch (RuntimeException e) {
@@ -179,7 +180,8 @@ public class ClientController {
             response.put("employeeId", clientDto.getEmployeeId());
             response.put("email", clientDto.getEmail());
             response.put("phone", clientDto.getPhone());
-
+            response.put("gender",clientDto.getGender());
+            response.put("dateofbirth",clientDto.getDateOfBirth());
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {

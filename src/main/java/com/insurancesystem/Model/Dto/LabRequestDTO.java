@@ -53,5 +53,14 @@ public class LabRequestDTO {
 
     private Instant createdAt;
     private Instant updatedAt;
-
+    // 🆕 Family Member Information (if prescription is for a family member)
+    private Boolean isFamilyMember;
+    private String familyMemberName;
+    private String familyMemberRelation;
+    private String familyMemberInsuranceNumber;
+    private String familyMemberAge;
+    private String familyMemberGender;
+    // 🆕 Main Client Information (age and gender)
+    private String memberAge;
+    private String memberGender;
 }

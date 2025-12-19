@@ -6,18 +6,18 @@ import com.insurancesystem.Model.Dto.RadiologyRequestDTO;
 import com.insurancesystem.Model.Dto.UpdateUserDTO;
 import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.Entity.Enums.RoleName;
+import com.insurancesystem.Model.Entity.FamilyMember;
 import com.insurancesystem.Model.Entity.RadiologyRequest;
 import com.insurancesystem.Model.Entity.Enums.LabRequestStatus;
 import com.insurancesystem.Model.Entity.PriceList;
 import com.insurancesystem.Model.MapStruct.ClientMapper;
 import com.insurancesystem.Model.MapStruct.RadiologyRequestMapper;
 import com.insurancesystem.Repository.ClientRepository;
+import com.insurancesystem.Repository.FamilyMemberRepository;
 import com.insurancesystem.Repository.PriceListRepository;
 import com.insurancesystem.Repository.RadiologistRepository;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -37,6 +38,7 @@ public class RadiologyRequestService {
 
     private final RadiologistRepository radiologyRequestRepository;
     private final ClientRepository clientRepository;
+    private final FamilyMemberRepository familyMemberRepo;
     private final PriceListRepository priceListRepository; // 🆕 ربط PriceList
     private final RadiologyRequestMapper radiologyRequestMapper;
     private final ClientMapper clientMapper;
@@ -48,7 +50,6 @@ public class RadiologyRequestService {
         return radiologist.getId();
     }
 
-
     // ➕ Create a new Radiology Request (linked with PriceList)
     @Transactional
     public RadiologyRequestDTO create(RadiologyRequestDTO dto) {
@@ -59,9 +60,57 @@ public class RadiologyRequestService {
         Client doctor = clientRepository.findByEmail(username.toLowerCase())
                 .orElseThrow(() -> new NotFoundException("Doctor not found"));
 
+        // 👤 المريض - Check if it's a family member
+        Client member;
+        FamilyMember familyMember = null;
+        String familyMemberInfo = "";
 
-        Client member = clientRepository.findById(dto.getMemberId())
-                .orElseThrow(() -> new NotFoundException("Member not found"));
+        if (dto.getMemberId() != null) {
+            // First try to find as a Client
+            Optional<Client> clientOpt = clientRepository.findById(dto.getMemberId());
+
+            if (clientOpt.isPresent()) {
+                member = clientOpt.get();
+            } else {
+                // If not found as Client, try to find as FamilyMember
+                Optional<FamilyMember> familyMemberOpt = familyMemberRepo.findById(dto.getMemberId());
+
+                if (familyMemberOpt.isPresent()) {
+                    familyMember = familyMemberOpt.get();
+                    // Get the main client (the family member's client)
+                    member = familyMember.getClient();
+
+                    // Calculate age from date of birth
+                    int age = -1;
+                    if (familyMember.getDateOfBirth() != null) {
+                        java.time.LocalDate today = java.time.LocalDate.now();
+                        java.time.LocalDate birthDate = familyMember.getDateOfBirth();
+                        age = today.getYear() - birthDate.getYear();
+                        if (today.getMonthValue() < birthDate.getMonthValue() ||
+                                (today.getMonthValue() == birthDate.getMonthValue() && today.getDayOfMonth() < birthDate.getDayOfMonth())) {
+                            age--;
+                        }
+                    }
+
+                    // Store family member info for notes with age and gender
+                    String ageStr = age > 0 ? age + " years" : "N/A";
+                    String genderStr = familyMember.getGender() != null ? familyMember.getGender().toString() : "N/A";
+
+                    familyMemberInfo = String.format(
+                            "\nFamily Member: %s (%s) - Insurance: %s - Age: %s - Gender: %s",
+                            familyMember.getFullName(),
+                            familyMember.getRelation(),
+                            familyMember.getInsuranceNumber(),
+                            ageStr,
+                            genderStr
+                    );
+                } else {
+                    throw new NotFoundException("Member not found");
+                }
+            }
+        } else {
+            throw new NotFoundException("Member ID is required");
+        }
 
         // 🆕 جلب خدمة الأشعة من PriceList
         PriceList test = priceListRepository.findById(dto.getTestId())
@@ -70,10 +119,20 @@ public class RadiologyRequestService {
         // 📝 إنشاء الطلب
         RadiologyRequest request = radiologyRequestMapper.toEntity(dto);
         request.setDoctor(doctor);
-        request.setMember(member);
+        request.setMember(member); // Always link to main client
         request.setRadiologist(null);
         request.setTest(test);               // 🆕 ربط PriceList
         request.setTestName(test.getServiceName()); // 🆕 اسم الفحص
+
+        // Add family member info to notes if applicable
+        String notes = dto.getNotes() != null ? dto.getNotes() : "";
+        if (familyMember != null && !familyMemberInfo.isEmpty()) {
+            notes = notes.isEmpty()
+                    ? familyMemberInfo.trim()
+                    : notes + familyMemberInfo;
+        }
+        request.setNotes(notes);
+
         request.setStatus(LabRequestStatus.PENDING);
         request.setCreatedAt(Instant.now());
         request.setUpdatedAt(Instant.now());
@@ -81,16 +140,38 @@ public class RadiologyRequestService {
         RadiologyRequest savedRequest = radiologyRequestRepository.save(request);
 
         // 🔔 إشعار للراديولوجيين
+        String radiologistMessage = familyMember != null
+                ? String.format(
+                "📋 لديك طلب فحص إشعاعي جديد من الدكتور %s لعضو العائلة %s (%s) - العميل: %s",
+                doctor.getFullName(),
+                familyMember.getFullName(),
+                familyMember.getRelation(),
+                member.getFullName()
+        )
+                : "📋 لديك طلب فحص إشعاعي جديد من الدكتور " + doctor.getFullName() +
+                " للمريض " + member.getFullName();
+
         clientRepository.findByRoles_Name(RoleName.RADIOLOGIST)
                 .forEach(r -> notificationService.sendToUser(
                         r.getId(),
-                        "📋 لديك طلب فحص إشعاعي جديد من الدكتور " + doctor.getFullName()
+                        radiologistMessage
                 ));
 
-        // 🔔 إشعار للمريض
+        // 🔔 إشعار للمريض (main client)
+        String memberNotification = familyMember != null
+                ? String.format(
+                "📊 تم إنشاء طلب فحص إشعاعي جديد من الدكتور %s لعضو العائلة %s (%s) - الفحص: %s",
+                doctor.getFullName(),
+                familyMember.getFullName(),
+                familyMember.getRelation(),
+                test.getServiceName()
+        )
+                : "📊 تم إنشاء طلب فحص إشعاعي جديد بواسطة الدكتور " + doctor.getFullName() +
+                " - الفحص: " + test.getServiceName();
+
         notificationService.sendToUser(
                 member.getId(),
-                "📊 تم إنشاء طلب فحص إشعاعي جديد بواسطة الدكتور " + doctor.getFullName()
+                memberNotification
         );
 
         return radiologyRequestMapper.toDto(savedRequest);
@@ -169,6 +250,7 @@ public class RadiologyRequestService {
     public RadiologyRequestDTO getResult(UUID id) {
         RadiologyRequest request = radiologyRequestRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Radiology request not found"));
+
         return radiologyRequestMapper.toDto(request);
     }
 
@@ -179,7 +261,6 @@ public class RadiologyRequestService {
 
         Client doctor = clientRepository.findByEmail(username.toLowerCase())
                 .orElseThrow(() -> new NotFoundException("Doctor not found"));
-
 
         RadiologyRequest request = radiologyRequestRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Radiology request not found"));
@@ -204,7 +285,6 @@ public class RadiologyRequestService {
         Client doctor = clientRepository.findByEmail(username.toLowerCase())
                 .orElseThrow(() -> new NotFoundException("Doctor not found"));
 
-
         RadiologyRequest request = radiologyRequestRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Radiology request not found"));
 
@@ -223,7 +303,6 @@ public class RadiologyRequestService {
 
         Client doctor = clientRepository.findByEmail(username.toLowerCase())
                 .orElseThrow(() -> new NotFoundException("Doctor not found"));
-
 
         return radiologyRequestRepository.findByDoctorId(doctor.getId())
                 .stream()
@@ -258,7 +337,6 @@ public class RadiologyRequestService {
         Client member = clientRepository.findByEmail(username.toLowerCase())
                 .orElseThrow(() -> new NotFoundException("Member not found"));
 
-
         return radiologyRequestRepository.findByMemberId(member.getId())
                 .stream()
                 .map(radiologyRequestMapper::toDto)
@@ -276,10 +354,8 @@ public class RadiologyRequestService {
     // 👤 Radiologist updates profile
     @Transactional
     public ClientDto updateRadiologistProfile(String username, UpdateUserDTO dto, MultipartFile[] universityCard){
-
         Client radiologist = clientRepository.findByEmail(username.toLowerCase())
                 .orElseThrow(() -> new NotFoundException("Radiologist not found"));
-
 
         if (dto.getFullName() != null) radiologist.setFullName(dto.getFullName());
         if (dto.getEmail() != null) radiologist.setEmail(dto.getEmail());
@@ -312,8 +388,9 @@ public class RadiologyRequestService {
             }
         }
 
-
         radiologist.setUpdatedAt(Instant.now());
+
         return clientMapper.toDTO(clientRepository.save(radiologist));
     }
 }
+
