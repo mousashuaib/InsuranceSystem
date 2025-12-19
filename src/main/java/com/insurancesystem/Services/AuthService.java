@@ -277,6 +277,7 @@ public class AuthService {
                 .pharmacyCode(req.getPharmacyCode())
                 .pharmacyName(req.getPharmacyName())
                 .pharmacyLocation(req.getPharmacyLocation())
+                .gender(req.getGender())  // إضافة الجنس
                 .labCode(req.getLabCode())
                 .labName(req.getLabName())
                 .labLocation(req.getLabLocation())

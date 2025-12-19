@@ -216,8 +216,12 @@ public class HealthcareProviderClaimService {
         HealthcareProviderClaim claim = claimRepo.findById(claimId)
                 .orElseThrow(() -> new NotFoundException("Claim not found"));
 
-        if (claim.getStatus() != ClaimStatus.PENDING_MEDICAL)
-            throw new NotFoundException("Claim was already processed");
+        if (
+                claim.getStatus() != ClaimStatus.PENDING_MEDICAL &&
+                        claim.getStatus() != ClaimStatus.RETURNED_FOR_REVIEW
+        ) {
+            throw new BadRequestException("Claim was already processed");
+        }
 
         Client reviewer = clientRepo.findById(reviewerId)
                 .orElseThrow(() -> new NotFoundException("Reviewer not found"));
@@ -262,8 +266,13 @@ public class HealthcareProviderClaimService {
         HealthcareProviderClaim claim = claimRepo.findById(claimId)
                 .orElseThrow(() -> new NotFoundException("Claim not found"));
 
-        if (claim.getStatus() != ClaimStatus.PENDING_MEDICAL)
-            throw new NotFoundException("Claim already processed");
+        if (
+                claim.getStatus() != ClaimStatus.PENDING_MEDICAL &&
+                        claim.getStatus() != ClaimStatus.RETURNED_FOR_REVIEW
+        ) {
+            throw new BadRequestException("Claim already processed");
+        }
+
 
         // ✔ تم تعيين بيانات المراجع الطبي
         Client reviewer = clientRepo.findById(reviewerId)
@@ -319,7 +328,6 @@ public class HealthcareProviderClaimService {
             dto.setDiagnosis(claim.getDiagnosis());
             dto.setTreatmentDetails(claim.getTreatmentDetails());
 
-            // تعبئة clientName + employeeId
             if (claim.getClientId() != null) {
                 clientRepo.findById(claim.getClientId()).ifPresent(client -> {
                     dto.setClientName(client.getFullName());
@@ -369,6 +377,14 @@ public class HealthcareProviderClaimService {
 
         return claims.stream().map(claim -> {
             HealthcareProviderClaimMedicalDTO dto = claimMapper.toMedicalDto(claim);
+// ⭐ distinguish claims returned by coordination admin
+            if (claim.getStatus() == ClaimStatus.RETURNED_FOR_REVIEW) {
+                dto.setReturnedByCoordinator(true);
+                dto.setCoordinatorNote(claim.getRejectionReason());
+            } else {
+                dto.setReturnedByCoordinator(false);
+                dto.setCoordinatorNote(null);
+            }
 
             // اسم المريض
             if (claim.getClientId() != null) {
@@ -641,6 +657,17 @@ public class HealthcareProviderClaimService {
         claim.setRejectedAt(Instant.now());
 
         HealthcareProviderClaim saved = claimRepo.save(claim);
+
+        // 🔔 notify medical admins (URGENT)
+        clientRepo.findByRoles_Name(RoleName.MEDICAL_ADMIN)
+                .forEach(admin ->
+                        notificationService.sendToUser(
+                                admin.getId(),
+                                "🚨 مراجعة طبية عاجلة\n" +
+                                        "تم إرجاع مطالبة من المنسق الإداري.\n\n" +
+                                        "📝 ملاحظة:\n" + reason
+                        )
+                );
 
         // 🔔 إشعار لمقدم الطلب
         notificationService.sendToUser(

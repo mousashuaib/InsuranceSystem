@@ -275,7 +275,7 @@ public class HealthcareProviderClaimController {
     }
 
 
-    @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_MEDICAL_ADMIN','ROLE_COORDINATION_ADMIN')")
     @GetMapping("/final-decisions")
     public ResponseEntity<?> finalDecisions() {
 

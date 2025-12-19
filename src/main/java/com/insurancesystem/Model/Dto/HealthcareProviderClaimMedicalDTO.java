@@ -26,6 +26,9 @@ public class HealthcareProviderClaimMedicalDTO {
     private String diagnosis;
     private String treatmentDetails;
     private LocalDate serviceDate;
+    // HealthcareProviderClaimMedicalDTO
+    private Boolean returnedByCoordinator;
+    private String coordinatorNote;
 
     // Files
     private String invoiceImagePath;

@@ -33,6 +33,7 @@ public class CreateClientDto {
     @Size(min = 9, max = 20)
     private String nationalId;
 
+    private String gender;
 
     @NotEmpty
     private Set<RoleName> roles;

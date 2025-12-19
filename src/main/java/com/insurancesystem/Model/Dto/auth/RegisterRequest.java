@@ -54,7 +54,7 @@ public class RegisterRequest {
     @NotBlank
     @Size(min = 9, max = 20)
     private String nationalId;
-
+    private String gender;
     private String labLocation;
     private String radiologyCode;
     private String radiologyName;

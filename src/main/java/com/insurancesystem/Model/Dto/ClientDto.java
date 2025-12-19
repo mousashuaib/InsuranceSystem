@@ -32,6 +32,7 @@ public class ClientDto {
     private boolean hasChronicDiseases;
     private Set<ChronicDisease> chronicDiseases;
     private String policyName;
+    private String gender;
 
     private LocalDate dateOfBirth;
 

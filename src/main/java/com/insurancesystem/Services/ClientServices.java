@@ -52,7 +52,14 @@ public class ClientServices {
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
         clientMapper.updateEntityFromDTO(dto, user);
+        // تحديث الحقول الجديدة
+        if (dto.getNationalId() != null) {
+            user.setNationalId(dto.getNationalId());
+        }
 
+        if (dto.getDateOfBirth() != null) {
+            user.setDateOfBirth(dto.getDateOfBirth());
+        }
         if (universityCards != null && universityCards.length > 0) {
             Path uploadPath = Paths.get("uploads/cards");
             try {
@@ -152,6 +159,14 @@ public class ClientServices {
             client.setPhone(dto.getPhone());
         }
 
+        // تحديث الحقول الجديدة
+        if (dto.getNationalId() != null) {
+            client.setNationalId(dto.getNationalId());
+        }
+
+        if (dto.getDateOfBirth() != null) {
+            client.setDateOfBirth(dto.getDateOfBirth());
+        }
         if (universityCards != null && universityCards.length > 0) {
             try {
                 Path uploadPath = Paths.get("uploads/profile");

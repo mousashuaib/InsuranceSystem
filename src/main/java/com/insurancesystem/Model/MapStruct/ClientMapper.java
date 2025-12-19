@@ -32,6 +32,7 @@ public interface ClientMapper {
 
     @Mapping(target = "universityCardImages", source = "universityCardImages")
     @Mapping(target = "chronicDocumentPaths", source = "chronicDocumentPaths")
+    @Mapping(target = "gender", source = "gender")
     ClientDto toDTO(Client entity);
 
     // =========================
@@ -42,6 +43,7 @@ public interface ClientMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "universityCardImages", ignore = true)
+    @Mapping(target = "gender", source = "gender")
     @Mapping(target = "chronicDiseases", ignore = true) // ❗ لا تُنشأ هنا
     Client toEntity(CreateClientDto dto);
 
@@ -65,7 +67,7 @@ public interface ClientMapper {
     @Mapping(target = "nationalId", ignore = true)
     @Mapping(target = "dateOfBirth", ignore = true)
     @Mapping(target = "chronicDiseases", ignore = true)
-
+    @Mapping(target = "gender", source = "gender")
     @Mapping(target = "passwordHash", ignore = true)
     @Mapping(target = "roles", ignore = true)
     @Mapping(target = "universityCardImages", ignore = true)

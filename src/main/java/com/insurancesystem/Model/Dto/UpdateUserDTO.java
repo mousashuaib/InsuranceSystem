@@ -5,6 +5,7 @@ import com.insurancesystem.Model.Entity.Enums.MemberStatus;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Data
@@ -22,6 +23,9 @@ public class UpdateUserDTO {
 
     @Size(max = 40)
     private String phone;
+    private String gender;
+    private LocalDate dateOfBirth;
+    private String nationalId;
 
     private MemberStatus status; // للأدمن فقط
     List<String> universityCardImages;

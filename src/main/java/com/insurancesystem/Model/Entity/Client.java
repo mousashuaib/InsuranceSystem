@@ -195,5 +195,7 @@ public class Client {
     @Column(name = "document_path")
     private List<String> chronicDocumentPaths = new ArrayList<>();
 
+    @Column(name = "gender", length = 10)
+    private String gender; // حقل الجنس
 
 }
