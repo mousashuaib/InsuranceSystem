@@ -10,6 +10,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PrescriptionItemDTO {
+
     private UUID id;
 
     // معلومات الدواء
@@ -22,6 +23,7 @@ public class PrescriptionItemDTO {
     // معلومات الجرعة
     private Integer dosage; // ✅ صار Integer
     private Integer timesPerDay; // عدد المرات في اليوم
+    private Integer duration; // المدة بالأيام (NEW)
 
     // الأسعار
     private Double pharmacistPrice; // سعر الصيدلي (يدخله الصيدلي)
@@ -31,3 +33,4 @@ public class PrescriptionItemDTO {
     private Instant expiryDate; // تاريخ انتهاء الدواء
     private Instant createdAt;
 }
+

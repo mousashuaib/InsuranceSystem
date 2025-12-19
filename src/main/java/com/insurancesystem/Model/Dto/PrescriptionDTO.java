@@ -47,4 +47,17 @@ public class PrescriptionDTO {
     private Long pending;
     private Long verified;
     private Long rejected;
+
+    // 🆕 Family Member Information (if prescription is for a family member)
+    private Boolean isFamilyMember;
+    private String familyMemberName;
+    private String familyMemberRelation;
+    private String familyMemberInsuranceNumber;
+    private String familyMemberAge;
+    private String familyMemberGender;
+
+    // 🆕 Main Client Information (age and gender)
+    private String memberAge;
+    private String memberGender;
 }
+

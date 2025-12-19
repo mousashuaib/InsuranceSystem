@@ -9,6 +9,7 @@ import com.insurancesystem.Model.Dto.UpdateUserDTO;
 import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.Entity.Enums.PrescriptionStatus;
 import com.insurancesystem.Model.Entity.Enums.RoleName;
+import com.insurancesystem.Model.Entity.FamilyMember;
 import com.insurancesystem.Model.Entity.Prescription;
 import com.insurancesystem.Model.Entity.PrescriptionItem;
 import com.insurancesystem.Model.Entity.PriceList;
@@ -39,6 +40,7 @@ public class PrescriptionService {
     private final PrescriptionItemRepository prescriptionItemRepo;
     private final ClientRepository clientRepo;
     private final PriceListRepository priceListRepo;
+    private final FamilyMemberRepository familyMemberRepo;
     private final PrescriptionMapper prescriptionMapper;
     private final ClientMapper clientMapper;
     private final NotificationService notificationService;
@@ -64,9 +66,52 @@ public class PrescriptionService {
                 .orElseThrow(() -> new NotFoundException("DOCTOR_NOT_FOUND"));
 
         Client member;
+        FamilyMember familyMember = null;
+        String familyMemberInfo = "";
+
         if (dto.getMemberId() != null) {
-            member = clientRepo.findById(dto.getMemberId())
-                    .orElseThrow(() -> new NotFoundException("MEMBER_NOT_FOUND"));
+            // First try to find as a Client
+            Optional<Client> clientOpt = clientRepo.findById(dto.getMemberId());
+
+            if (clientOpt.isPresent()) {
+                member = clientOpt.get();
+            } else {
+                // If not found as Client, try to find as FamilyMember
+                Optional<FamilyMember> familyMemberOpt = familyMemberRepo.findById(dto.getMemberId());
+
+                if (familyMemberOpt.isPresent()) {
+                    familyMember = familyMemberOpt.get();
+                    // Get the main client (the family member's client)
+                    member = familyMember.getClient();
+
+                    // Calculate age from date of birth
+                    int age = -1;
+                    if (familyMember.getDateOfBirth() != null) {
+                        java.time.LocalDate today = java.time.LocalDate.now();
+                        java.time.LocalDate birthDate = familyMember.getDateOfBirth();
+                        age = today.getYear() - birthDate.getYear();
+                        if (today.getMonthValue() < birthDate.getMonthValue() ||
+                                (today.getMonthValue() == birthDate.getMonthValue() && today.getDayOfMonth() < birthDate.getDayOfMonth())) {
+                            age--;
+                        }
+                    }
+
+                    // Store family member info for notes with age and gender
+                    String ageStr = age > 0 ? age + " years" : "N/A";
+                    String genderStr = familyMember.getGender() != null ? familyMember.getGender().toString() : "N/A";
+
+                    familyMemberInfo = String.format(
+                            "\nFamily Member: %s (%s) - Insurance: %s - Age: %s - Gender: %s",
+                            familyMember.getFullName(),
+                            familyMember.getRelation(),
+                            familyMember.getInsuranceNumber(),
+                            ageStr,
+                            genderStr
+                    );
+                } else {
+                    throw new NotFoundException("MEMBER_NOT_FOUND");
+                }
+            }
         } else {
             member = clientRepo.findByFullName(dto.getMemberName())
                     .orElseThrow(() -> new NotFoundException("MEMBER_NOT_FOUND"));
@@ -76,12 +121,18 @@ public class PrescriptionService {
             throw new IllegalArgumentException("PRESCRIPTION_MUST_HAVE_MEDICINES");
         }
 
+        // Add family member info to treatment notes if applicable
+        String treatmentNotes = dto.getTreatment();
+        if (familyMember != null && !familyMemberInfo.isEmpty()) {
+            treatmentNotes = dto.getTreatment() + familyMemberInfo;
+        }
+
         Prescription prescription = Prescription.builder()
                 .doctor(doctor)
-                .member(member)
+                .member(member) // Always link to main client
                 .status(PrescriptionStatus.PENDING)
                 .diagnosis(dto.getDiagnosis())
-                .treatment(dto.getTreatment())
+                .treatment(treatmentNotes)
                 .totalPrice(0.0)
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
@@ -95,16 +146,25 @@ public class PrescriptionService {
             PriceList med = priceListRepo.findById(itemDto.getMedicineId())
                     .orElseThrow(() -> new NotFoundException("MEDICINE_NOT_FOUND_IN_PRICE_LIST"));
 
-            int quantity = extractQuantity(med.getServiceDetails());
-            int dailyConsumption = itemDto.getDosage() * itemDto.getTimesPerDay();
-            int daysOfSupply = quantity / dailyConsumption;
-            Instant expiry = Instant.now().plus(daysOfSupply, ChronoUnit.DAYS);
+            // Use duration if provided, otherwise calculate from quantity
+            Integer duration = itemDto.getDuration();
+            Instant expiry;
+            if (duration != null && duration > 0) {
+                expiry = Instant.now().plus(duration, ChronoUnit.DAYS);
+            } else {
+                // Fallback to old calculation if duration not provided
+                int quantity = extractQuantity(med.getServiceDetails());
+                int dailyConsumption = itemDto.getDosage() * itemDto.getTimesPerDay();
+                int daysOfSupply = dailyConsumption > 0 ? quantity / dailyConsumption : 1;
+                expiry = Instant.now().plus(daysOfSupply, ChronoUnit.DAYS);
+            }
 
             PrescriptionItem item = PrescriptionItem.builder()
                     .prescription(prescription)
                     .priceList(med)
                     .dosage(itemDto.getDosage())
                     .timesPerDay(itemDto.getTimesPerDay())
+                    .duration(duration)
                     .expiryDate(expiry)
                     .createdAt(Instant.now())
                     .updatedAt(Instant.now())
@@ -117,40 +177,89 @@ public class PrescriptionService {
         prescriptionRepo.save(prescription);
 
         // 🔔 إشعار للصيادلة (جميع الصيادلة)
+        String pharmacistMessage = familyMember != null
+                ? String.format(
+                "📋 لديك وصفة طبية جديدة من الدكتور %s لعضو العائلة %s (%s) - العميل: %s",
+                doctor.getFullName(),
+                familyMember.getFullName(),
+                familyMember.getRelation(),
+                member.getFullName()
+        )
+                : "📋 لديك وصفة طبية جديدة من الدكتور " + doctor.getFullName() +
+                " للمريض " + member.getFullName();
+
         clientRepo.findByRoles_Name(RoleName.PHARMACIST)
                 .forEach(pharmacist -> notificationService.sendToUser(
                         pharmacist.getId(),
-                        "📋 لديك وصفة طبية جديدة من الدكتور " + doctor.getFullName() +
-                                " للمريض " + member.getFullName()
+                        pharmacistMessage
                 ));
 
-        // 🔔 إشعار للمريض
+        // 🔔 إشعار للمريض (main client)
+        String notificationMessage = familyMember != null
+                ? String.format(
+                "💊 تم إنشاء وصفة طبية جديدة من الدكتور %s لعضو العائلة %s (%s)",
+                doctor.getFullName(),
+                familyMember.getFullName(),
+                familyMember.getRelation()
+        )
+                : "💊 تم إنشاء وصفة طبية جديدة لك من الدكتور " + doctor.getFullName();
+
         notificationService.sendToUser(
                 member.getId(),
-                "💊 تم إنشاء وصفة طبية جديدة لك من الدكتور " + doctor.getFullName()
+                notificationMessage
         );
 
         return prescriptionMapper.toDto(prescription);
     }
 
     // Member sees prescriptions
+    @Transactional(readOnly = true)
     public List<PrescriptionDTO> getMyPrescriptions() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Client member = clientRepo.findByEmail(auth.getName().toLowerCase())
                 .orElseThrow(() -> new NotFoundException("Member not found"));
 
-        return prescriptionRepo.findByMemberId(member.getId())
+        // Use custom query that eagerly fetches member with dateOfBirth and gender
+        return prescriptionRepo.findByMemberIdWithMember(member.getId())
                 .stream()
                 .map(prescriptionMapper::toDto)
                 .collect(Collectors.toList());
     }
 
     // Pending prescriptions for pharmacists
+    @Transactional(readOnly = true)
     public List<PrescriptionDTO> getPending() {
-        return prescriptionRepo.findByStatus(PrescriptionStatus.PENDING)
-                .stream()
+        // Use custom query that eagerly fetches member with dateOfBirth and gender
+        List<Prescription> prescriptions = prescriptionRepo.findByStatusWithMember(PrescriptionStatus.PENDING);
+
+        log.info("📋 [SERVICE] Found {} pending prescriptions", prescriptions.size());
+
+        // Force initialization of member fields to ensure they're loaded
+        for (Prescription p : prescriptions) {
+            if (p.getMember() != null) {
+                Client member = p.getMember();
+                // Force access to fields to trigger loading
+                String name = member.getFullName();
+                java.time.LocalDate dob = member.getDateOfBirth();
+                String gender = member.getGender();
+                log.info("👤 [SERVICE] Prescription {} - Member: {} | DOB: {} | Gender: {}",
+                        p.getId(), name, dob, gender);
+            } else {
+                log.warn("⚠️ [SERVICE] Prescription {} has null member", p.getId());
+            }
+        }
+
+        List<PrescriptionDTO> dtos = prescriptions.stream()
                 .map(prescriptionMapper::toDto)
                 .collect(Collectors.toList());
+
+        // Verify DTOs have the data
+        for (PrescriptionDTO dto : dtos) {
+            log.info("📦 [SERVICE] DTO for {} - memberAge: {} | memberGender: {}",
+                    dto.getId(), dto.getMemberAge(), dto.getMemberGender());
+        }
+
+        return dtos;
     }
 
     // Pharmacist verifies items
@@ -159,7 +268,6 @@ public class PrescriptionService {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Client pharmacist = clientRepo.findByEmail(auth.getName().toLowerCase())
                 .orElseThrow(() -> new NotFoundException("PHARMACIST_NOT_FOUND"));
-
 
         Prescription prescription = prescriptionRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("PRESCRIPTION_NOT_FOUND"));
@@ -201,7 +309,6 @@ public class PrescriptionService {
                 prescription.getDoctor().getId(),
                 "✅ تمت الموافقة على وصفتك للمريض " + prescription.getMember().getFullName() +
                         " من الصيدلي " + pharmacist.getFullName()
-
         );
 
         return prescriptionMapper.toDto(prescription);
@@ -213,7 +320,6 @@ public class PrescriptionService {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Client pharmacist = clientRepo.findByEmail(auth.getName().toLowerCase())
                 .orElseThrow(() -> new NotFoundException("PHARMACIST_NOT_FOUND"));
-
 
         Prescription prescription = prescriptionRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("PRESCRIPTION_NOT_FOUND"));
@@ -262,16 +368,25 @@ public class PrescriptionService {
             PriceList med = priceListRepo.findById(itemDto.getMedicineId())
                     .orElseThrow(() -> new NotFoundException("MEDICINE_NOT_FOUND_IN_PRICE_LIST"));
 
-            int quantity = extractQuantity(med.getServiceDetails());
-            int daily = itemDto.getDosage() * itemDto.getTimesPerDay();
-            int days = quantity / daily;
-            Instant expiry = Instant.now().plus(days, ChronoUnit.DAYS);
+            // Use duration if provided, otherwise calculate from quantity
+            Integer duration = itemDto.getDuration();
+            Instant expiry;
+            if (duration != null && duration > 0) {
+                expiry = Instant.now().plus(duration, ChronoUnit.DAYS);
+            } else {
+                // Fallback to old calculation if duration not provided
+                int quantity = extractQuantity(med.getServiceDetails());
+                int daily = itemDto.getDosage() * itemDto.getTimesPerDay();
+                int days = daily > 0 ? quantity / daily : 1;
+                expiry = Instant.now().plus(days, ChronoUnit.DAYS);
+            }
 
             PrescriptionItem item = PrescriptionItem.builder()
                     .prescription(prescription)
                     .priceList(med)
                     .dosage(itemDto.getDosage())
                     .timesPerDay(itemDto.getTimesPerDay())
+                    .duration(duration)
                     .expiryDate(expiry)
                     .createdAt(Instant.now())
                     .updatedAt(Instant.now())
@@ -340,7 +455,6 @@ public class PrescriptionService {
         Client pharmacist = clientRepo.findByEmail(auth.getName().toLowerCase())
                 .orElseThrow(() -> new NotFoundException("PHARMACIST_NOT_FOUND"));
 
-
         return PrescriptionDTO.builder()
                 .pending(prescriptionRepo.countByStatus(PrescriptionStatus.PENDING))
                 .verified(prescriptionRepo.countByPharmacistIdAndStatus(pharmacist.getId(), PrescriptionStatus.VERIFIED))
@@ -389,33 +503,46 @@ public class PrescriptionService {
             }
         }
 
-
         pharmacist.setUpdatedAt(Instant.now());
         Client saved = clientRepo.save(pharmacist);
         return clientMapper.toDTO(saved);
     }
 
     // Doctor sees his prescriptions
+    @Transactional(readOnly = true)
     public List<PrescriptionDTO> getByDoctor() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Client doctor = clientRepo.findByEmail(auth.getName().toLowerCase())
                 .orElseThrow(() -> new NotFoundException("DOCTOR_NOT_FOUND"));
 
-
-        return prescriptionRepo.findByDoctorId(doctor.getId())
+        // Use custom query that eagerly fetches member with dateOfBirth and gender
+        return prescriptionRepo.findByDoctorIdWithMember(doctor.getId())
                 .stream()
                 .map(prescriptionMapper::toDto)
                 .collect(Collectors.toList());
     }
 
     // Pharmacist sees all his prescriptions
+    @Transactional(readOnly = true)
     public List<PrescriptionDTO> getAllForCurrentPharmacist() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Client pharmacist = clientRepo.findByEmail(auth.getName().toLowerCase())
                 .orElseThrow(() -> new NotFoundException("PHARMACIST_NOT_FOUND"));
 
-        return prescriptionRepo.findByPharmacistId(pharmacist.getId())
-                .stream()
+        // Use custom query that eagerly fetches member with dateOfBirth and gender
+        List<Prescription> prescriptions = prescriptionRepo.findByPharmacistIdWithMember(pharmacist.getId());
+
+        // Force initialization of member fields to ensure they're loaded
+        for (Prescription p : prescriptions) {
+            if (p.getMember() != null) {
+                // Force access to fields to trigger loading
+                p.getMember().getFullName();
+                p.getMember().getDateOfBirth();
+                p.getMember().getGender();
+            }
+        }
+
+        return prescriptions.stream()
                 .map(prescriptionMapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -467,7 +594,6 @@ public class PrescriptionService {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Client pharmacist = clientRepo.findByEmail(auth.getName().toLowerCase())
                 .orElseThrow(() -> new NotFoundException("PHARMACIST_NOT_FOUND"));
-
 
         Prescription prescription = prescriptionRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("PRESCRIPTION_NOT_FOUND"));

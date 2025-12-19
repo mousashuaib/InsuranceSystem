@@ -49,6 +49,14 @@ public class FamilyMemberController {
         familyService.deleteFamilyMember(auth.getName(), memberId);
     }
 
+    /* ===================== DOCTOR - Get Family by Client ID ===================== */
+
+    @PreAuthorize("hasRole('DOCTOR')")
+    @GetMapping("/client/{clientId}")
+    public List<FamilyMemberDTO> getFamilyByClientId(@PathVariable UUID clientId) {
+        return familyService.getFamilyForClient(clientId);
+    }
+
     /* ===================== MEDICAL ADMIN ===================== */
 
     @PreAuthorize("hasRole('MEDICAL_ADMIN')")
@@ -60,3 +68,4 @@ public class FamilyMemberController {
         return familyService.updateStatus(memberId, dto.getStatus());
     }
 }
+

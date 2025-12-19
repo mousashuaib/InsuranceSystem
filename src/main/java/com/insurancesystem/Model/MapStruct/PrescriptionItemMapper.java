@@ -21,10 +21,9 @@ public interface PrescriptionItemMapper {
     @AfterMapping
     default void decodeJson(@MappingTarget PrescriptionItemDTO dto, PrescriptionItem entity) {
         try {
-            if (entity.getPriceList().getServiceDetails() != null) {
+            if (entity.getPriceList() != null && entity.getPriceList().getServiceDetails() != null) {
                 ObjectMapper mapper = new ObjectMapper();
                 Map<String, Object> map = mapper.readValue(entity.getPriceList().getServiceDetails(), Map.class);
-
                 dto.setScientificName((String) map.get("scientificName"));
                 dto.setMedicineQuantity(map.get("quantity") != null ? (Integer) map.get("quantity") : 1);
             }
@@ -37,3 +36,4 @@ public interface PrescriptionItemMapper {
     @Mapping(target = "expiryDate", ignore = true)
     PrescriptionItem toEntity(PrescriptionItemDTO dto);
 }
+
