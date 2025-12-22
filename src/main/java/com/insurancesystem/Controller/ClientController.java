@@ -72,7 +72,7 @@ public class ClientController {
     }
 
 
-    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','COORDINATION_ADMIN')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','COORDINATION_ADMIN','MEDICAL_ADMIN')")
     @PatchMapping("/{id}/reject")
     public ResponseEntity<Void> rejectAndDelete(@PathVariable UUID id, @Valid @RequestBody RejectReasonDTO dto) {
         clientServices.rejectRoleRequest(id, dto.getReason());

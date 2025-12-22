@@ -35,6 +35,7 @@ public class ClientDto {
     private String gender;
 
     private LocalDate dateOfBirth;
+    private boolean emailVerified;
 
     // Employee/Healthcare Provider Information
     private String employeeId;

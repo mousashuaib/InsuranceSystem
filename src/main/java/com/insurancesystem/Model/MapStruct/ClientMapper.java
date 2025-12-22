@@ -29,7 +29,7 @@ public interface ClientMapper {
             target = "policyName",
             expression = "java(entity.getPolicy() != null ? entity.getPolicy().getName() : null)"
     )
-
+    @Mapping(target = "emailVerified", source = "emailVerified")
     @Mapping(target = "universityCardImages", source = "universityCardImages")
     @Mapping(target = "chronicDocumentPaths", source = "chronicDocumentPaths")
     @Mapping(target = "gender", source = "gender")
