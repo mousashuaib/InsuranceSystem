@@ -1,5 +1,6 @@
 package com.insurancesystem.Controller;
 
+import com.insurancesystem.Exception.BadRequestException;
 import com.insurancesystem.Model.Dto.ClientDto;
 import com.insurancesystem.Model.Dto.VerifyEmailRequest;
 import com.insurancesystem.Model.Dto.auth.*;
@@ -71,9 +72,14 @@ public class AuthController {
 
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req) {
-        var out = authService.login(req);
-        return ResponseEntity.ok(out);
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req) {
+        try {
+            var out = authService.login(req);
+            return ResponseEntity.ok(out);
+        } catch (BadRequestException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(java.util.Map.of("message", e.getMessage()));
+        }
     }
 
     @PreAuthorize("isAuthenticated()")

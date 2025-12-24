@@ -195,8 +195,9 @@ public class SearchProfileController {
     }
 
     // ✅ جلب البروفايلات الموافق عليها فقط
+
     @GetMapping("/approved")
-    @PreAuthorize("hasAnyRole('INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','EMERGENCY_MANAGER','INSURANCE_MANAGER')")
+    @PreAuthorize("hasAnyRole('INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','EMERGENCY_MANAGER','INSURANCE_MANAGER','MEDICAL_ADMIN','COORDINATION_ADMIN')")
     public List<SearchProfileDto> getApprovedProfiles() {
         return service.getApprovedProfiles();
     }

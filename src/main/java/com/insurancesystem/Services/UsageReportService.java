@@ -14,7 +14,7 @@ public class UsageReportService {
     private final PrescriptionRepository prescriptionRepo;
     private final LabRequestRepository labRepo;
     private final EmergencyRequestRepository emergencyRepo;
-    private final MedicalRecordRepository recordRepo;
+    private final DocotrRepository recordRepo;
 
     public UsageReportDto generateReport() {
         return UsageReportDto.builder()

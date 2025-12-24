@@ -21,11 +21,10 @@ public interface HealthcareProviderClaimRepository extends JpaRepository<Healthc
 
     List<HealthcareProviderClaim> findByHealthcareProvider(Client provider);
     
-    @Query(value = """
-        SELECT * FROM healthcare_provider_claims 
-        WHERE provider_id = :providerId 
-        AND status IN ('PENDING_MEDICAL', 'APPROVED_FINAL', 'REJECTED_FINAL', 'RETURNED_FOR_REVIEW')
-    """, nativeQuery = true)
+    @Query("""
+        SELECT c FROM HealthcareProviderClaim c
+        WHERE c.healthcareProvider.id = :providerId
+    """)
     List<HealthcareProviderClaim> findByHealthcareProviderId(@Param("providerId") UUID providerId);
 
     List<HealthcareProviderClaim> findByStatus(ClaimStatus status);

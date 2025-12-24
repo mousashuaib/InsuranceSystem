@@ -15,7 +15,7 @@ public class MembersActivityReportService {
     private final PrescriptionRepository prescriptionRepo;
     private final LabRequestRepository labRepo;
     private final EmergencyRequestRepository emergencyRepo;
-    private final MedicalRecordRepository recordRepo;
+    private final DocotrRepository recordRepo;
 
     public MembersActivityReportDto generateReport() {
         long totalMembers = clientRepo.count();

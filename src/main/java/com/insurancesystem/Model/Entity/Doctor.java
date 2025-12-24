@@ -12,18 +12,12 @@ import java.util.UUID;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class MedicalRecord {
+public class Doctor {
 
     @Id
     @GeneratedValue
     private UUID id;
 
-    @Column(nullable = false)
-    private String diagnosis;
-
-    private String treatment;
-
-    private String notes;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "doctor_id", nullable = false)
@@ -33,7 +27,5 @@ public class MedicalRecord {
     @JoinColumn(name = "member_id", nullable = false)
     private Client member;
 
-    private Instant createdAt;
 
-    private Instant updatedAt;
 }
