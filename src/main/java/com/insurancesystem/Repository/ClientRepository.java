@@ -3,6 +3,7 @@ package com.insurancesystem.Repository;
 import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.Entity.Enums.MemberStatus;
 import com.insurancesystem.Model.Entity.Enums.RoleName;
+import com.insurancesystem.Model.Entity.FamilyMember;
 import com.insurancesystem.Model.Entity.Policy;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

@@ -5,6 +5,7 @@ import com.insurancesystem.Model.Dto.CoordinatorClientLookupDTO;
 import com.insurancesystem.Model.Dto.RejectReasonDTO;
 import com.insurancesystem.Model.Dto.UpdateUserDTO;
 import com.insurancesystem.Model.Entity.Client;
+import com.insurancesystem.Model.Entity.Enums.ChronicDisease;
 import com.insurancesystem.Model.Entity.Enums.RoleName;
 import com.insurancesystem.Repository.ClientRepository;
 import com.insurancesystem.Services.ClientServices;
@@ -12,15 +13,14 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/clients")
@@ -30,13 +30,13 @@ public class ClientController {
     private final ClientServices clientServices;
     private final ClientRepository clientRepository;
 
-    @PreAuthorize("hasRole('INSURANCE_MANAGER')")
+    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN', 'MEDICAL_ADMIN')")
     @GetMapping("/list")
     public ResponseEntity<List<ClientDto>> list() {
         return ResponseEntity.ok(clientServices.list());
     }
 
-    @PreAuthorize("hasRole('INSURANCE_MANAGER')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','COORDINATION_ADMIN')")
     @GetMapping("/get/{id}")
     public ResponseEntity<ClientDto> getUserById(@PathVariable UUID id) {
         return ResponseEntity.ok(clientServices.getById(id));
@@ -53,30 +53,47 @@ public class ClientController {
         return ResponseEntity.ok(clientServices.update(id, dto, universityCard));
     }
 
-    @PreAuthorize("hasRole('INSURANCE_MANAGER')")
+    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN', 'MEDICAL_ADMIN')")
     @PatchMapping("/{id}/approve")
     public ResponseEntity<ClientDto> approve(@PathVariable UUID id) {
+        ClientDto clientDto = clientServices.getById(id);
+
+        if (clientDto.getRequestedRole() == RoleName.INSURANCE_CLIENT) {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+            // تحقق إذا كان المستخدم الحالي هو MEDICAL_ADMIN
+            if (!authentication.getAuthorities().stream()
+                    .anyMatch(authority -> authority.getAuthority().equals("ROLE_MEDICAL_ADMIN"))) {
+                throw new AccessDeniedException("You do not have permission to approve this request.");
+            }
+        }
+
         return ResponseEntity.ok(clientServices.approveRequestedRole(id));
     }
 
-    @PreAuthorize("hasRole('INSURANCE_MANAGER')")
-    @GetMapping("/role-requests/pending")
-    public ResponseEntity<List<ClientDto>> listPendingRoleRequests() {
-        return ResponseEntity.ok(clientServices.listUsersWithPendingRole());
-    }
 
-    @PreAuthorize("hasRole('INSURANCE_MANAGER')")
-    @PatchMapping("/{id}/role-requests/approve")
-    public ResponseEntity<ClientDto> approveRole(@PathVariable UUID id) {
-        return ResponseEntity.ok(clientServices.approveRequestedRole(id));
-    }
-
-    @PreAuthorize("hasRole('INSURANCE_MANAGER')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','COORDINATION_ADMIN','MEDICAL_ADMIN')")
     @PatchMapping("/{id}/reject")
     public ResponseEntity<Void> rejectAndDelete(@PathVariable UUID id, @Valid @RequestBody RejectReasonDTO dto) {
         clientServices.rejectRoleRequest(id, dto.getReason());
         return ResponseEntity.noContent().build();
     }
+
+
+    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN', 'MEDICAL_ADMIN')")
+    @GetMapping("/role-requests/pending")
+    public ResponseEntity<List<ClientDto>> listPendingRoleRequests() {
+        return ResponseEntity.ok(clientServices.listUsersWithPendingRole());
+    }
+
+    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN', 'MEDICAL_ADMIN')")
+    @PatchMapping("/{id}/role-requests/approve")
+    public ResponseEntity<Void> approveRole(@PathVariable UUID id) {
+        clientServices.approveClientRoleRequest(id);
+        return ResponseEntity.noContent().build();
+    }
+
+
 
     // ✅ تعديل: MultipartFile -> MultipartFile[]
     @PreAuthorize("hasRole('INSURANCE_CLIENT')")
@@ -91,7 +108,7 @@ public class ClientController {
         return ResponseEntity.ok(updated);
 
     }
-    @PreAuthorize("hasRole('INSURANCE_MANAGER')")
+    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN', 'MEDICAL_ADMIN')")
     @PatchMapping("/{id}/deactivate")
     public ResponseEntity<Void> deactivateClient(
             @PathVariable UUID id,
@@ -102,7 +119,7 @@ public class ClientController {
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("hasRole('INSURANCE_MANAGER')")
+    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN', 'MEDICAL_ADMIN')")
     @PatchMapping("/{id}/reactivate")
     public ResponseEntity<Void> reactivateClient(@PathVariable UUID id) {
         clientServices.reactivateClient(id);
@@ -113,7 +130,9 @@ public class ClientController {
 
     @GetMapping("/search/employeeId/{employeeId}")
 
-    @PreAuthorize("hasAnyRole('RADIOLOGIST','LAB_TECH','PHARMACIST','DOCTOR', 'ADMIN', 'INSURANCE_MANAGER', 'MEDICAL_ADMIN', 'COORDINATION_ADMIN')")
+
+
+    @PreAuthorize("hasAnyRole('RADIOLOGIST','LAB_TECH','PHARMACIST','DOCTOR', 'ADMIN', 'INSURANCE_MANAGER', 'MEDICAL_ADMIN','COORDINATION_ADMIN')")
 
     public ResponseEntity<?> findByEmployeeId(@PathVariable String employeeId) {
         try {
@@ -146,7 +165,7 @@ public class ClientController {
                     java.time.LocalDate birthDate = clientDto.getDateOfBirth();
                     java.time.LocalDate today = java.time.LocalDate.now();
                     int years = today.getYear() - birthDate.getYear();
-                    if (today.getMonthValue() < birthDate.getMonthValue() || 
+                    if (today.getMonthValue() < birthDate.getMonthValue() ||
                         (today.getMonthValue() == birthDate.getMonthValue() && today.getDayOfMonth() < birthDate.getDayOfMonth())) {
                         years--;
                     }
@@ -191,7 +210,11 @@ public class ClientController {
     }
 
     @GetMapping("/search/name/{fullName}")
-    @PreAuthorize("hasAnyRole('RADIOLOGIST','LAB_TECH','PHARMACIST','DOCTOR', 'INSURANCE_MANAGER', 'INSURANCE_CLIENT','MEDICAL_ADMIN')")
+
+
+
+    @PreAuthorize("hasAnyRole('RADIOLOGIST','LAB_TECH','PHARMACIST','DOCTOR', 'INSURANCE_MANAGER', 'INSURANCE_CLIENT','MEDICAL_ADMIN','COORDINATION_ADMIN')")
+
     public ResponseEntity<?> findByFullName(@PathVariable String fullName) {
         try {
             if (fullName == null || fullName.trim().isEmpty()) {
@@ -226,7 +249,7 @@ public class ClientController {
         clientServices.clearUniversityCardsByEmail(email);
         return ResponseEntity.noContent().build();
     }
-    @PreAuthorize("hasRole('COORDINATION_ADMIN')")
+    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN', 'MEDICAL_ADMIN')")
     @PostMapping("/coordinator/lookup-for-claim")
     public ResponseEntity<ClientDto> lookupClientForCoordinatorClaim(
             @RequestBody CoordinatorClientLookupDTO dto
@@ -235,6 +258,8 @@ public class ClientController {
                 clientServices.findClientForCoordinatorClaim(dto)
         );
     }
+
+
 
 
 }

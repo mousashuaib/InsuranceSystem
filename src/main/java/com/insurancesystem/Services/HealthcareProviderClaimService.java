@@ -1406,9 +1406,31 @@ public class HealthcareProviderClaimService {
 
         return claims.stream().map(claim -> {
             HealthcareProviderClaimDTO dto = claimMapper.toDto(claim);
+
             populatePatientInfo(claim, dto);
             dto.setProviderRole(getProviderRole(claim));
             
+
+            dto.setInvoiceImagePath(claim.getInvoiceImagePath());
+
+            // ✅ تحديد دور مقدم الخدمة
+            String role;
+            if (claim.getClientId() != null &&
+                    claim.getHealthcareProvider().getId().equals(claim.getClientId())) {
+
+                // Self-service client claim
+                role = RoleName.INSURANCE_CLIENT.name();
+
+            } else {
+                // Provider claim
+                role = claim.getHealthcareProvider()
+                        .getRoles()
+                        .stream()
+                        .findFirst()
+                        .map(r -> r.getName().name())
+                        .orElse("UNKNOWN");
+            }
+
             if (claim.getClientId() != null) {
                 clientRepo.findById(claim.getClientId())
                         .ifPresent(c -> dto.setEmployeeId(c.getEmployeeId()));

@@ -7,10 +7,13 @@ import com.insurancesystem.Model.Dto.CoordinatorClientLookupDTO;
 import com.insurancesystem.Model.Dto.UpdateUserDTO;
 import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.Entity.Enums.MemberStatus;
+import com.insurancesystem.Model.Entity.Enums.ProfileStatus;
 import com.insurancesystem.Model.Entity.Enums.RoleName;
 import com.insurancesystem.Model.Entity.Enums.RoleRequestStatus;
+import com.insurancesystem.Model.Entity.FamilyMember;
 import com.insurancesystem.Model.MapStruct.ClientMapper;
 import com.insurancesystem.Repository.ClientRepository;
+import com.insurancesystem.Repository.FamilyMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +31,7 @@ import java.util.UUID;
 public class ClientServices {
 
     private final ClientRepository clientRepo;
+    private final FamilyMemberRepository familyMemberRepository;
     private final RoleService roleService;
     private final ClientMapper clientMapper;
     private final EmailService emailService;
@@ -112,15 +116,22 @@ public class ClientServices {
         u.setStatus(MemberStatus.ACTIVE);
         u.setRoleRequestStatus(RoleRequestStatus.APPROVED);
         u.setRequestedRole(null);
+
+        // تخصيص الأدوار بحيث:
+        // إذا كان الدور هو "INSURANCE_CLIENT"، يتم إرسال إشعار للمسؤول الطبي
+        if (role.getName() == RoleName.INSURANCE_CLIENT) {
+            notificationService.sendToUser(u.getId(), "تمت الموافقة على حسابك كعميل. يمكنك تسجيل الدخول الآن.");
+            // إرسال إشعار للمسؤول الطبي
+            notificationService.sendToRole(RoleName.MEDICAL_ADMIN, "تمت الموافقة على طلبك كعميل: " + u.getFullName());
+        } else {
+            notificationService.sendToUser(u.getId(), "تمت الموافقة على طلب دورك.");
+        }
+
         clientRepo.save(u);
-
         emailService.sendRoleApprovalEmail(u.getEmail(), u.getFullName(), role.getName());
-        notificationService.sendToUser(u.getId(), "تمت الموافقة على حسابك. يمكنك تسجيل الدخول الآن.");
-        notificationService.markNotificationAsReadByMessage(RoleName.INSURANCE_MANAGER,
-                "مستخدم جديد (" + u.getFullName() + ") سجل وينتظر الموافقة.");
-
         return clientMapper.toDTO(u);
     }
+
 
     @Transactional
     public void rejectRoleRequest(UUID clientId, String reason) {
@@ -249,7 +260,7 @@ public class ClientServices {
         notificationService.sendToUser(client.getId(), "✅ تم إعادة تفعيل حسابك بنجاح.");
     }
 
- 
+
 
     /**
      * 🆔 Find client by employee ID
@@ -335,6 +346,30 @@ public class ClientServices {
         return clientMapper.toDTO(client);
     }
 
+    @Transactional
+    public void approveClientRoleRequest(UUID clientId) {
+
+        Client client = clientRepo.findById(clientId)
+                .orElseThrow(() -> new NotFoundException("Client not found"));
+
+        // 1️⃣ تفعيل الكلاينت
+        client.setStatus(MemberStatus.ACTIVE);
+        client.setRoleRequestStatus(RoleRequestStatus.APPROVED);
+
+        // 2️⃣ إعطاؤه الدور المطلوب
+        addRoleToClient(client.getId(), client.getRequestedRole());
+
+        // 3️⃣ 🔥 قبول كل أفراد العائلة
+        List<FamilyMember> family = familyMemberRepository.findByClient_Id(clientId);
+
+        for (FamilyMember member : family) {
+            if (member.getStatus() == ProfileStatus.PENDING) {
+                member.setStatus(ProfileStatus.APPROVED);
+            }
+        }
+
+        clientRepo.save(client);
+    }
 
 }
 

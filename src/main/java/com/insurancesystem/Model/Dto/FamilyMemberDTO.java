@@ -2,6 +2,7 @@ package com.insurancesystem.Model.Dto;
 
 import com.insurancesystem.Model.Entity.Enums.FamilyRelation;
 import com.insurancesystem.Model.Entity.Enums.Gender;
+import com.insurancesystem.Model.Entity.Enums.MemberStatus;
 import com.insurancesystem.Model.Entity.Enums.ProfileStatus;
 import lombok.*;
 
@@ -25,5 +26,10 @@ public class FamilyMemberDTO {
     private java.util.List<String> documentImages;
     private Instant createdAt;
     private ProfileStatus status;
+    private String clientFullName;
+    private UUID clientId;
+    private String clientNationalId;
+    private MemberStatus clientStatus;
+
 
 }

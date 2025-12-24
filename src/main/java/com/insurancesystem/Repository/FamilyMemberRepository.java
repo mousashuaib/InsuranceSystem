@@ -1,5 +1,6 @@
 package com.insurancesystem.Repository;
 
+import com.insurancesystem.Model.Entity.Enums.ProfileStatus;
 import com.insurancesystem.Model.Entity.FamilyMember;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -29,7 +30,12 @@ public interface FamilyMemberRepository extends JpaRepository<FamilyMember, UUID
 
     // ❌ حذف فرد عائلة للمؤمن (مع التحقق من الملكية)
     void deleteByIdAndClient_Id(UUID id, UUID clientId);
+
     
     // 🔍 البحث عن فرد عائلة بالاسم الكامل
     Optional<FamilyMember> findByFullName(String fullName);
+
+
+    List<FamilyMember> findByStatus(ProfileStatus status);
+
 }

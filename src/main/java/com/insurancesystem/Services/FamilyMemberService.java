@@ -1,5 +1,6 @@
 package com.insurancesystem.Services;
 
+import com.insurancesystem.Exception.BadRequestException;
 import com.insurancesystem.Exception.NotFoundException;
 import com.insurancesystem.Model.Dto.CreateFamilyMemberDTO;
 import com.insurancesystem.Model.Dto.FamilyMemberDTO;
@@ -59,6 +60,43 @@ public class FamilyMemberService {
         Client client = clientRepo.findByEmail(username.toLowerCase())
                 .orElseThrow(() -> new NotFoundException("Client not found"));
 
+        // ===================== AGE VALIDATION =====================
+        if (dto.getDateOfBirth() == null || dto.getRelation() == null) {
+            throw new BadRequestException("Date of birth and relation are required");
+        }
+
+        int age = java.time.Period
+                .between(dto.getDateOfBirth(), java.time.LocalDate.now())
+                .getYears();
+
+        switch (dto.getRelation()) {
+
+            case SON:
+            case DAUGHTER:
+                if (age > 22) {
+                    throw new BadRequestException(
+                            "Children are allowed up to 22 years old only"
+                    );
+                }
+                break;
+
+            case FATHER:
+            case MOTHER:
+                if (age > 100) {
+                    throw new BadRequestException(
+                            "Parents are allowed up to 100 years old only"
+                    );
+                }
+                break;
+
+            case WIFE:
+                // لا يوجد شرط عمر
+                break;
+
+            default:
+                throw new BadRequestException("Invalid family relation");
+        }
+
 
         if (familyRepo.existsByNationalId(dto.getNationalId())) {
             throw new IllegalStateException("National ID already exists");
@@ -84,6 +122,8 @@ public class FamilyMemberService {
                 .relation(dto.getRelation())
                 .insuranceNumber(insuranceNumber)
                 .status(ProfileStatus.PENDING)
+                .documentImages(new java.util.ArrayList<>()) // ✅ مهم جداً
+
                 .build();
 
         // ✅ حفظ أكثر من ملف
@@ -118,4 +158,34 @@ public class FamilyMemberService {
 
         familyRepo.deleteByIdAndClient_Id(memberId, client.getId());
     }
+    @Transactional(readOnly = true)
+    public List<FamilyMemberDTO> getPendingFamilyMembers() {
+        return familyRepo.findByStatus(ProfileStatus.PENDING)
+                .stream()
+                .map(familyMemberMapper::toDto)
+                .toList();
+    }
+    @Transactional
+    public void reject(UUID id, String reason) {
+        FamilyMember member = familyRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Family member not found"));
+
+        member.setStatus(ProfileStatus.REJECTED);
+        familyRepo.save(member);
+
+        // (اختياري) نوتيفيكيشن أو إيميل
+    }
+    @Transactional
+    public void approve(UUID id) {
+        FamilyMember member = familyRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("Family member not found"));
+
+        if (member.getStatus() != ProfileStatus.PENDING) {
+            throw new BadRequestException("Family member is not pending");
+        }
+
+        member.setStatus(ProfileStatus.APPROVED);
+        familyRepo.save(member);
+    }
+
 }

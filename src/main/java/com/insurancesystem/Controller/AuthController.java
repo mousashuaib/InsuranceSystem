@@ -1,6 +1,7 @@
 package com.insurancesystem.Controller;
 
 import com.insurancesystem.Model.Dto.ClientDto;
+import com.insurancesystem.Model.Dto.VerifyEmailRequest;
 import com.insurancesystem.Model.Dto.auth.*;
 import com.insurancesystem.Security.JwtService;
 import com.insurancesystem.Services.AuthService;
@@ -120,4 +121,13 @@ public class AuthController {
         authService.resetPassword(req.getToken(), req.getNewPassword());
         return ResponseEntity.ok("Password has been reset successfully");
     }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<String> verifyEmail(
+            @RequestBody VerifyEmailRequest req) {
+
+        authService.verifyEmail(req.getEmail(), req.getCode());
+        return ResponseEntity.ok("Email verified successfully");
+    }
+
 }

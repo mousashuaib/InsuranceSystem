@@ -113,10 +113,55 @@ public class AuthService {
         // 🔒 Uniqueness checks
         // ===============================
 
+        Optional<Client> existingOpt = clientRepo.findByEmail(email);
 
-        if (email != null && clientRepo.existsByEmail(email)) {
-            throw new BadRequestException("Email already exists");
+        if (existingOpt.isPresent()) {
+            Client existing = existingOpt.get();
+
+            // 🟢 الإيميل موجود ومُفعّل
+            if (existing.isEmailVerified()) {
+                throw new BadRequestException("Email already exists and is verified. Please sign in.");
+            }
+
+            // 🟡 الإيميل موجود لكن غير مُفعل → إعادة إرسال OTP
+            String otp = String.format("%06d", new Random().nextInt(900000) + 100000);
+
+            existing.setEmailVerificationCode(otp);
+            existing.setEmailVerificationExpiry(
+                    Instant.now().plusSeconds(10 * 60)
+            );
+
+            clientRepo.save(existing);
+
+            emailService.sendCustomEmail(
+                    existing.getEmail(),
+                    "Email Verification Code",
+                    """
+        ==============================
+         Email Verification
+        ==============================
+        
+        Dear %s,
+        
+        Your verification code is:
+        
+        %s
+        
+        This code will expire in 10 minutes.
+        
+        If you did not create this account, please ignore this email.
+        
+        Best regards,
+        Insurance System Team
+        """
+                            .formatted(existing.getFullName(), otp)
+            );
+
+            throw new BadRequestException(
+                    "Email already registered but not verified. Verification code resent."
+            );
         }
+
 
         if (req.getNationalId() == null || req.getNationalId().isBlank()) {
             throw new BadRequestException("National ID is required");
@@ -299,7 +344,8 @@ public class AuthService {
                 .radiologyName(req.getRadiologyName())
                 .radiologyLocation(req.getRadiologyLocation())
                 .dateOfBirth(req.getDateOfBirth())
-                .status(status)
+                .status(MemberStatus.INACTIVE)
+                .emailVerified(false)
                 .roleRequestStatus(roleStatus)
                 .requestedRole(role)
                 .createdAt(Instant.now())
@@ -317,8 +363,43 @@ public class AuthService {
                 savedClient.getLabCode(),
                 savedClient.getRadiologyCode());
 
+
         Client saved = savedClient; // ✅ Use the already saved client
 
+
+
+        String otp = String.format("%06d", new Random().nextInt(900000) + 100000);
+
+        saved.setEmailVerificationCode(otp);
+        saved.setEmailVerificationExpiry(
+                Instant.now().plusSeconds(10 * 60) // 10 دقائق
+        );
+
+        clientRepo.save(saved);
+
+        emailService.sendCustomEmail(
+                saved.getEmail(),
+                "Email Verification Code",
+                """
+        ==============================
+         Email Verification
+        ==============================
+        
+        Dear %s,
+        
+        Your verification code is:
+        
+        %s
+        
+        This code will expire in 10 minutes.
+        
+        If you did not create this account, please ignore this email.
+        
+        Best regards,
+        Insurance System Team
+        """
+                        .formatted(saved.getFullName(), otp)
+        );
 
         if (role == RoleName.INSURANCE_CLIENT && req.isHasChronicDiseases()) {
 
@@ -529,6 +610,9 @@ public class AuthService {
 
         var authToken =
                 new UsernamePasswordAuthenticationToken(email, req.getPassword());
+        if (!clientDTO.isEmailVerified()) {
+            throw new BadRequestException("📧 Please verify your email first.");
+        }
 
         authenticationManager.authenticate(authToken);
 
@@ -564,15 +648,23 @@ public class AuthService {
                 client.getEmail(),
                 "Password Reset Request (Web)",
                 """
-                Dear %s,<br><br>
-                We received a request to reset your password.<br><br>
-
-                🌐 <a href="%s">Reset your password via Web</a><br><br>
-
-                If you didn’t request a password reset, you can safely ignore this email.<br><br>
-                Best regards,<br>
-                Insurance System Team
-                """.formatted(client.getFullName(), webResetLink)
+ ==============================
+  Password Reset Request
+ ==============================
+ 
+ Dear %s,
+ 
+ We received a request to reset your password.
+ 
+ Reset your password using the link below:
+ %s
+ 
+ If you did not request this action, please ignore this email.
+ 
+ Best regards,
+ Insurance System Team
+ """
+                        .formatted(client.getFullName(), webResetLink)
         );
     }
 
@@ -581,15 +673,23 @@ public class AuthService {
                 client.getEmail(),
                 "Password Reset Request (Mobile)",
                 """
-                Dear %s,<br><br>
-                We received a request to reset your password.<br><br>
-
-                📱 <a href="%s">Reset your password via Mobile</a><br><br>
-
-                If you didn’t request a password reset, you can safely ignore this email.<br><br>
-                Best regards,<br>
-                Insurance System Team
-                """.formatted(client.getFullName(), mobileResetLink)
+  ==============================
+   Password Reset Request
+  ==============================
+  
+  Dear %s,
+  
+  We received a request to reset your password.
+  
+  Reset your password using the link below:
+  %s
+  
+  If you did not request this action, please ignore this email.
+  
+  Best regards,
+  Insurance System Team
+  """
+                        .formatted(client.getFullName(), mobileResetLink)
         );
     }
 
@@ -689,6 +789,33 @@ public class AuthService {
         return paths;
     }
 
+    public void verifyEmail(String email, String code) {
+
+        Client client = clientRepo.findByEmail(email)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+
+
+        if (client.isEmailVerified()) {
+            throw new BadRequestException("Email already verified");
+        }
+
+        if (client.getEmailVerificationExpiry() == null ||
+                client.getEmailVerificationExpiry().isBefore(Instant.now())) {
+            throw new BadRequestException("Verification code expired");
+        }
+
+        if (!code.equals(client.getEmailVerificationCode())) {
+            throw new BadRequestException("Invalid verification code");
+        }
+
+        client.setEmailVerified(true);
+        client.setEmailVerificationCode(null);
+        client.setEmailVerificationExpiry(null);
+        client.setStatus(MemberStatus.ACTIVE);
+
+        clientRepo.save(client);
+    }
 
 
 }

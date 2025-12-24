@@ -197,5 +197,19 @@ public class Client {
 
     @Column(name = "gender", length = 10)
     private String gender; // حقل الجنس
+    @Column(
+            name = "email_verified",
+            nullable = false,
+            columnDefinition = "boolean default false"
+    )
+    @Builder.Default
+    private boolean emailVerified = false;
+
+
+    @Column(name = "email_verification_code", length = 10)
+    private String emailVerificationCode;
+
+    @Column(name = "email_verification_expiry")
+    private Instant emailVerificationExpiry;
 
 }

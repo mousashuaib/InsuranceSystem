@@ -2,11 +2,13 @@ package com.insurancesystem.Controller;
 
 import com.insurancesystem.Model.Dto.CreateFamilyMemberDTO;
 import com.insurancesystem.Model.Dto.FamilyMemberDTO;
+import com.insurancesystem.Model.Dto.RejectReasonDTO;
 import com.insurancesystem.Model.Dto.UpdateFamilyMemberStatusDTO;
 import com.insurancesystem.Services.FamilyMemberService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -51,7 +53,9 @@ public class FamilyMemberController {
 
     /* ===================== DOCTOR / COORDINATION_ADMIN - Get Family by Client ID ===================== */
 
-    @PreAuthorize("hasAnyRole('DOCTOR', 'COORDINATION_ADMIN')")
+
+    @PreAuthorize("hasAnyRole('DOCTOR','COORDINATION_ADMIN','INSURANCE_MANAGER','MEDICAL_ADMIN')")
+
     @GetMapping("/client/{clientId}")
     public List<FamilyMemberDTO> getFamilyByClientId(@PathVariable UUID clientId) {
         return familyService.getFamilyForClient(clientId);
@@ -67,5 +71,31 @@ public class FamilyMemberController {
     ) {
         return familyService.updateStatus(memberId, dto.getStatus());
     }
+
+    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN','MEDICAL_ADMIN')")
+    @GetMapping("/pending")
+    public ResponseEntity<List<FamilyMemberDTO>> getPendingFamilyMembers() {
+        return ResponseEntity.ok(
+                familyService.getPendingFamilyMembers()
+        );
+    }
+    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN','MEDICAL_ADMIN')")
+    @PatchMapping("/{id}/approve")
+    public ResponseEntity<Void> approveFamilyMember(@PathVariable UUID id) {
+        familyService.approve(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN','MEDICAL_ADMIN')")
+    @PatchMapping("/{id}/reject")
+    public ResponseEntity<Void> rejectFamilyMember(
+            @PathVariable UUID id,
+            @RequestBody RejectReasonDTO dto
+    ) {
+        familyService.reject(id, dto.getReason());
+        return ResponseEntity.noContent().build();
+    }
+
+
 }
 
