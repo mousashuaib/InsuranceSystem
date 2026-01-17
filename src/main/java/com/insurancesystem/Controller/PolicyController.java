@@ -82,10 +82,11 @@ public class PolicyController {
     @PreAuthorize("hasRole('INSURANCE_CLIENT')")
     @GetMapping("/my-policy")
     public ResponseEntity<PolicyDTO> getMyPolicy(Authentication authentication) {
-        String username = authentication.getName();
-        PolicyDTO policy = policyService.getPolicyByUsername(username);
+        String email = authentication.getName(); // الآن auth.getName() = email
+        PolicyDTO policy = policyService.getPolicyByEmail(email);
         return ResponseEntity.ok(policy);
     }
+
 
     // ===================== Coverages تحت بوليصة =====================
 

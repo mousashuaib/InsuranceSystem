@@ -207,26 +207,23 @@ public class PrescriptionController {
         }
     }
 
-    // 👤 Pharmacist يحدّث بروفايله
     @PatchMapping(value = "/pharmacist/me/update", consumes = "multipart/form-data")
     @PreAuthorize("hasRole('PHARMACIST')")
     public ResponseEntity<?> updatePharmacistProfile(
             Authentication auth,
             @RequestPart("data") @Valid UpdateUserDTO dto,
-            @RequestPart(value = "universityCard", required = false) MultipartFile universityCard
+            @RequestPart(value = "universityCard", required = false) MultipartFile[] universityCard
     ) {
         try {
             String username = auth.getName();
             ClientDto updated = prescriptionService.updatePharmacistProfile(username, dto, universityCard);
             return ResponseEntity.ok(updated);
         } catch (NotFoundException e) {
-            Map<String, String> errorResponse = new HashMap<>();
-            errorResponse.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", e.getMessage()));
         } catch (Exception e) {
-            Map<String, String> errorResponse = new HashMap<>();
-            errorResponse.put("message", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", e.getMessage()));
         }
     }
 
@@ -265,6 +262,25 @@ public class PrescriptionController {
     ) {
         try {
             return ResponseEntity.ok(prescriptionService.checkActivePrescription(memberName, medicineId));
+        } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+    @PatchMapping("/{id}/bill")
+    @PreAuthorize("hasRole('PHARMACIST')")
+    public ResponseEntity<?> bill(@PathVariable UUID id) {
+        try {
+            return ResponseEntity.ok(prescriptionService.bill(id));
+        } catch (NotFoundException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        } catch (IllegalStateException e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
         } catch (Exception e) {
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("message", e.getMessage());

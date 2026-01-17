@@ -5,6 +5,8 @@ import com.insurancesystem.Model.Entity.Enums.ProfileStatus;
 import com.insurancesystem.Model.Entity.SearchProfile;
 import com.insurancesystem.Model.Entity.Enums.SearchProfileType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 
 import java.util.Collection;
@@ -33,4 +35,13 @@ public interface SearchProfileRepository extends JpaRepository<SearchProfile, UU
     Optional<SearchProfile> findByOwnerId(UUID ownerId);
 
     List<SearchProfile> findAllByOwnerId(UUID ownerId);
+    @Query("""
+    select sp
+    from SearchProfile sp
+    join fetch sp.owner o
+    left join fetch o.universityCardImages
+    where sp.owner.id = :ownerId
+""")
+    List<SearchProfile> findMyProfilesWithOwnerImages(@Param("ownerId") UUID ownerId);
+
 }

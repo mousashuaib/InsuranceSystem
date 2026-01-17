@@ -32,6 +32,10 @@ public class EmergencyRequest {
     @Column(name = "doctor_id", nullable = false)
     private UUID doctorId;
 
+    // عضو العائلة إذا كان الطلب لعضو عائلة (nullable - null إذا كان الطلب للعميل الرئيسي)
+    @Column(name = "family_member_id", nullable = true)
+    private UUID familyMemberId;
+
     @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
 

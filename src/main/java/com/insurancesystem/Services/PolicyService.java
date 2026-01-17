@@ -8,9 +8,9 @@ import com.insurancesystem.Model.Dto.UpdatePolicyDTO;
 import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.Entity.Policy;
 import com.insurancesystem.Model.MapStruct.PolicyMapper;
-import com.insurancesystem.Repository.ClaimRepository;
 import com.insurancesystem.Repository.ClientRepository;
 import com.insurancesystem.Repository.CoverageRepository;
+import com.insurancesystem.Repository.HealthcareProviderClaimRepository;
 import com.insurancesystem.Repository.PolicyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,7 +28,7 @@ public class PolicyService {
     private final PolicyMapper policyMapper;
     private final ClientRepository clientRepo;
     private final CoverageRepository coverageRepository;
-    private final ClaimRepository claimRepository;
+    private final HealthcareProviderClaimRepository claimRepository;
 
 
 
@@ -103,8 +103,8 @@ public class PolicyService {
         clientRepo.save(client); // ⬅️ مهم جداً
     }
 
-    public PolicyDTO getPolicyByUsername(String username) {
-        Client client = clientRepo.findByUsername(username)
+    public PolicyDTO getPolicyByEmail(String email) {
+        Client client = clientRepo.findByEmail(email.toLowerCase())
                 .orElseThrow(() -> new NotFoundException("Client not found"));
 
         if (client.getPolicy() == null) {
@@ -113,6 +113,7 @@ public class PolicyService {
 
         return policyMapper.toDTO(client.getPolicy());
     }
+
     public PolicyDTO getPolicyByUserId(UUID userId) {
         Client client = clientRepo.findById(userId)
                 .orElseThrow(() -> new NotFoundException("Client not found"));

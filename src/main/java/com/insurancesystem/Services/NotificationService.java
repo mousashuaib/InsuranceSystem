@@ -155,12 +155,17 @@ public class NotificationService {
         notificationRepo.delete(notification);
     }
 
-    public void createNotificationByName(String senderUsername, String recipientUsername, String message,
-                                         NotificationType type, UUID repliedNotificationId) {
-        Client sender = clientRepo.findByUsername(senderUsername)
+    public void createNotificationByEmail(
+            String senderEmail,
+            String recipientEmail,
+            String message,
+            NotificationType type,
+            UUID repliedNotificationId
+    ) {
+        Client sender = clientRepo.findByEmail(senderEmail.toLowerCase())
                 .orElseThrow(() -> new NotFoundException("Sender not found"));
 
-        Client recipient = clientRepo.findByUsername(recipientUsername)
+        Client recipient = clientRepo.findByEmail(recipientEmail.toLowerCase())
                 .orElseThrow(() -> new NotFoundException("Recipient not found"));
 
         if (repliedNotificationId != null) {

@@ -36,7 +36,7 @@ public class RadiologyRequestController {
     public List<RadiologyRequestDTO> getPendingForRadiologist() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String currentUsername = auth.getName();
-        UUID radiologistId = radiologyService.getRadiologistIdByUsername(currentUsername);
+        UUID radiologistId = radiologyService.getRadiologistIdByEmail(currentUsername);
         return radiologyService.getPendingRequests(radiologistId);
     }
 
@@ -85,7 +85,7 @@ public class RadiologyRequestController {
     public RadiologyRequestDTO getRadiologyStats() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String currentUsername = auth.getName();
-        UUID radiologistId = radiologyService.getRadiologistIdByUsername(currentUsername);
+        UUID radiologistId = radiologyService.getRadiologistIdByEmail(currentUsername);
         return radiologyService.getRadiologyStats(radiologistId);
     }
 
@@ -95,10 +95,11 @@ public class RadiologyRequestController {
     public ResponseEntity<ClientDto> updateRadiologistProfile(
             Authentication auth,
             @RequestPart("data") @Valid UpdateUserDTO dto,
-            @RequestPart(value = "universityCard", required = false) MultipartFile universityCard
+            @RequestPart(value = "universityCard", required = false) MultipartFile[] universityCard
     ) {
-        String username = auth.getName();
-        ClientDto updated = radiologyService.updateRadiologistProfile(username, dto, universityCard);
+        String email = auth.getName();
+        ClientDto updated = radiologyService.updateRadiologistProfile(email, dto, universityCard);
+
         return ResponseEntity.ok(updated);
     }
 
@@ -108,7 +109,7 @@ public class RadiologyRequestController {
     public List<RadiologyRequestDTO> getMyRadiologyRequests() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String currentUsername = auth.getName();
-        UUID radiologistId = radiologyService.getRadiologistIdByUsername(currentUsername);
+        UUID radiologistId = radiologyService.getRadiologistIdByEmail(currentUsername);
         return radiologyService.getAllForCurrentRadiologist(radiologistId);
     }
 

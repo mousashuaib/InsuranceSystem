@@ -1,168 +1,366 @@
 package com.insurancesystem.Controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.insurancesystem.Exception.NotFoundException;
-import com.insurancesystem.Model.Dto.HealthcareProviderClaimDTO;
-import com.insurancesystem.Model.Dto.CreateHealthcareProviderClaimDTO;
-import com.insurancesystem.Model.Dto.RejectClaimDTO;
+
+import com.insurancesystem.Model.Dto.*;
+
 import com.insurancesystem.Model.Entity.Client;
+
+import com.insurancesystem.Model.Entity.Enums.ClaimStatus;
+import com.insurancesystem.Model.Entity.Enums.ReportType;
 import com.insurancesystem.Repository.ClientRepository;
+
 import com.insurancesystem.Services.HealthcareProviderClaimService;
+
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+
 import org.springframework.http.MediaType;
+
 import org.springframework.http.ResponseEntity;
+
 import org.springframework.security.access.prepost.PreAuthorize;
+
 import org.springframework.security.core.Authentication;
+
 import org.springframework.web.bind.annotation.*;
+
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.*;
 
 @RestController
+
 @RequestMapping("/api/healthcare-provider-claims")
+
 @RequiredArgsConstructor
+
 @CrossOrigin(origins = "*")
+
 public class HealthcareProviderClaimController {
 
     private final HealthcareProviderClaimService claimService;
+
     private final ClientRepository clientRepo;
+
     private final ObjectMapper objectMapper;
 
-    // ✅ البحث عن مريض بـ fullName
-    @GetMapping("/clients/by-name")
-    @PreAuthorize("hasAnyAuthority('ROLE_DOCTOR', 'ROLE_PHARMACIST', 'ROLE_LAB_TECH', 'ROLE_RADIOLOGIST')")
-    public ResponseEntity<?> getClientByFullName(@RequestParam String fullName) {
-        try {
-            Client client = clientRepo.findByFullName(fullName)
-                    .orElseThrow(() -> new NotFoundException("Patient not found with name: " + fullName));
+    // ============================================================
 
-            // ✅ إرجاع بيانات المريض كـ JSON
+    // Provider: Search Client By Name
+
+    // ============================================================
+
+    @PreAuthorize("hasAnyAuthority('ROLE_DOCTOR','ROLE_PHARMACIST','ROLE_LAB_TECH','ROLE_RADIOLOGIST')")
+
+    @GetMapping("/clients/by-name")
+
+    public ResponseEntity<?> getClientByFullName(@RequestParam String fullName) {
+
+        try {
+
+            Client client = clientRepo.findByFullName(fullName)
+
+                    .orElseThrow(() -> new NotFoundException("Patient not found: " + fullName));
+
             Map<String, Object> response = new HashMap<>();
+
             response.put("id", client.getId());
+
             response.put("fullName", client.getFullName());
-            response.put("username", client.getUsername());
+
+
             response.put("email", client.getEmail());
+
             response.put("phone", client.getPhone());
+
             response.put("status", client.getStatus());
 
             return ResponseEntity.ok(response);
+
         } catch (NotFoundException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("message", e.getMessage());
-            return ResponseEntity.status(404).body(error);
-        } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("message", "Error finding patient: " + e.getMessage());
-            return ResponseEntity.status(500).body(error);
+
+            return ResponseEntity.status(404).body(Map.of("message", e.getMessage()));
+
         }
+
     }
 
-    // ✅ إنشاء مطالبة - للـ Healthcare Providers فقط
-    @PreAuthorize("hasAnyAuthority('ROLE_DOCTOR', 'ROLE_PHARMACIST', 'ROLE_LAB_TECH', 'ROLE_RADIOLOGIST')")
+    // ============================================================
+
+    // Provider: Create Claim
+
+    // ============================================================
+
+    @PreAuthorize("hasAnyAuthority('ROLE_DOCTOR','ROLE_PHARMACIST','ROLE_LAB_TECH','ROLE_RADIOLOGIST')")
+
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<HealthcareProviderClaimDTO> createClaim(
+
+    public ResponseEntity<?> createClaim(
+
             Authentication auth,
-            @RequestPart("data") String reqJson,
+
+            @RequestPart("data") String json,
+
             @RequestPart(value = "document", required = false) MultipartFile document
+
     ) throws IOException {
+
         try {
-            String username = auth.getName();
-            Client provider = clientRepo.findByUsername(username)
-                    .orElseThrow(() -> new NotFoundException("Healthcare provider not found"));
 
-            CreateHealthcareProviderClaimDTO dto = objectMapper.readValue(reqJson, CreateHealthcareProviderClaimDTO.class);
+            Client provider = clientRepo.findByEmail(auth.getName().toLowerCase())
+                    .orElseThrow(() -> new NotFoundException("Provider not found"));
 
-            HealthcareProviderClaimDTO result = claimService.createClaim(provider.getId(), dto, document);
-            return ResponseEntity.status(HttpStatus.CREATED).body(result);
-        } catch (NotFoundException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("message", e.getMessage());
-            return ResponseEntity.status(404).body(null);
+            CreateHealthcareProviderClaimDTO dto =
+
+                    objectMapper.readValue(json, CreateHealthcareProviderClaimDTO.class);
+
+            return ResponseEntity.status(HttpStatus.CREATED)
+
+                    .body(claimService.createClaim(provider.getId(), dto, document));
+
         } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("message", e.getMessage() != null ? e.getMessage() : "Failed to create claim");
-            return ResponseEntity.status(400).body(null);
+
+            return ResponseEntity.status(400)
+
+                    .body(Map.of("message", "Failed to create claim: " + e.getMessage()));
+
         }
+
     }
 
-    // ✅ جلب مطالبات الـ Provider نفسه
-    @PreAuthorize("hasAnyAuthority('ROLE_DOCTOR', 'ROLE_PHARMACIST', 'ROLE_LAB_TECH', 'ROLE_RADIOLOGIST')")
+    // ============================================================
+
+    // Client: Create Self-Service Claim
+
+    // ============================================================
+
+    @PreAuthorize("hasRole('INSURANCE_CLIENT')")
+
+    @PostMapping(value = "/client/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+
+    public ResponseEntity<?> createClientClaim(
+
+            Authentication auth,
+
+            @RequestPart("data") String json,
+
+            @RequestPart(value = "document", required = false) MultipartFile document
+
+    ) throws IOException {
+
+        try {
+
+            Client client = clientRepo.findByEmail(auth.getName().toLowerCase())
+                    .orElseThrow(() -> new NotFoundException("Client not found"));
+
+
+            CreateHealthcareProviderClaimDTO dto =
+
+                    objectMapper.readValue(json, CreateHealthcareProviderClaimDTO.class);
+
+            return ResponseEntity.status(HttpStatus.CREATED)
+
+                    .body(claimService.createClientClaim(client.getId(), dto, document));
+
+        } catch (Exception e) {
+
+            return ResponseEntity.status(400)
+
+                    .body(Map.of("message", "Failed to create claim: " + e.getMessage()));
+
+        }
+
+    }
+
+    // ============================================================
+
+    // Provider: My Claims (including clients)
+
+    // ============================================================
+
+    @PreAuthorize("hasAnyAuthority('ROLE_DOCTOR','ROLE_PHARMACIST','ROLE_LAB_TECH','ROLE_RADIOLOGIST','ROLE_INSURANCE_CLIENT')")
+
     @GetMapping("/my-claims")
-    public ResponseEntity<List<HealthcareProviderClaimDTO>> getProviderClaims(Authentication auth) {
-        try {
-            String username = auth.getName();
-            Client provider = clientRepo.findByUsername(username)
-                    .orElseThrow(() -> new NotFoundException("Healthcare provider not found"));
 
-            return ResponseEntity.ok(claimService.getProviderClaims(provider.getId()));
+    public ResponseEntity<?> getProviderClaims(Authentication auth) {
+
+        try {
+            String email = auth.getName();
+            if (email == null || email.trim().isEmpty()) {
+                return ResponseEntity.status(401).body(Map.of("message", "Authentication failed: email not found"));
+            }
+
+            Client provider = clientRepo.findByEmail(email.toLowerCase())
+                    .orElseThrow(() -> new NotFoundException("Provider not found: " + email));
+
+            try {
+                return ResponseEntity.ok(claimService.getProviderClaims(provider.getId()));
+            } catch (IllegalArgumentException e) {
+                // Handle enum conversion errors - might be due to invalid status in database
+                if (e.getMessage() != null && e.getMessage().contains("No enum constant")) {
+                    return ResponseEntity.status(500).body(Map.of(
+                            "message", "Database contains invalid claim status values. Please contact administrator.",
+                            "error", "INVALID_ENUM_VALUE",
+                            "details", e.getMessage()
+                    ));
+                }
+                throw e; // Re-throw if it's a different IllegalArgumentException
+            }
+
         } catch (NotFoundException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("message", e.getMessage());
-            return ResponseEntity.status(404).body(null);
+            return ResponseEntity.status(404).body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("message", "Error fetching claims: " + e.getMessage()));
         }
+
     }
 
-    // ✅ جلب جميع المطالبات - للمدير فقط
-    @PreAuthorize("hasAuthority('ROLE_INSURANCE_MANAGER')")
+    // ============================================================
+
+    // MANAGER → Get All Claims
+
+    // ============================================================
+
+    @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
+
     @GetMapping("/all")
-    public ResponseEntity<List<HealthcareProviderClaimDTO>> getAllClaims() {
+
+    public ResponseEntity<?> getAllClaims() {
+
         return ResponseEntity.ok(claimService.getAllClaims());
+
     }
 
-    // ✅ جلب مطالبة واحدة
-    @PreAuthorize("hasAnyAuthority('ROLE_INSURANCE_MANAGER', 'ROLE_DOCTOR', 'ROLE_PHARMACIST', 'ROLE_LAB_TECH', 'ROLE_RADIOLOGIST')")
+    // ============================================================
+
+    // Get Single Claim (Manager OR Provider)
+
+    // ============================================================
+
+    @PreAuthorize("hasAnyAuthority('ROLE_INSURANCE_MANAGER','ROLE_DOCTOR','ROLE_PHARMACIST','ROLE_LAB_TECH','ROLE_RADIOLOGIST')")
+
     @GetMapping("/{id}")
-    public ResponseEntity<HealthcareProviderClaimDTO> getClaim(@PathVariable UUID id, Authentication auth) {
+
+    public ResponseEntity<?> getClaim(@PathVariable UUID id, Authentication auth) {
+
         try {
-            String username = auth.getName();
-            Client provider = clientRepo.findByUsername(username)
-                    .orElseThrow(() -> new NotFoundException("Healthcare provider not found"));
+
+            Client requester = clientRepo.findByEmail(auth.getName().toLowerCase())
+                    .orElseThrow(() -> new NotFoundException("Requester not found"));
 
             boolean isManager = auth.getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_INSURANCE_MANAGER"));
 
-            return ResponseEntity.ok(claimService.getClaim(id, provider.getId(), isManager));
+            return ResponseEntity.ok(claimService.getClaim(id, requester.getId(), isManager));
+
+
         } catch (NotFoundException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("message", e.getMessage());
-            return ResponseEntity.status(404).body(null);
+
+            return ResponseEntity.status(404).body(Map.of("message", e.getMessage()));
+
         }
+
     }
 
-    // ✅ موافقة على المطالبة - للمدير فقط
-    @PreAuthorize("hasAuthority('ROLE_INSURANCE_MANAGER')")
-    @PatchMapping("/{id}/approve")
-    public ResponseEntity<HealthcareProviderClaimDTO> approveClaim(@PathVariable UUID id) {
+    // ============================================================
+
+    // Medical Admin → Review List
+
+    // ============================================================
+
+    @PreAuthorize("hasAuthority('ROLE_MEDICAL_ADMIN')")
+
+    @GetMapping("/medical-review")
+
+    public ResponseEntity<?> medicalReviewList() {
+
+        return ResponseEntity.ok(claimService.getClaimsForMedicalReview());
+
+    }
+
+
+    @PreAuthorize("hasAnyAuthority('ROLE_MEDICAL_ADMIN','ROLE_COORDINATION_ADMIN')")
+    @GetMapping("/final-decisions")
+    public ResponseEntity<?> finalDecisions() {
+
+        return ResponseEntity.ok(claimService.getFinalDecisions());
+
+    }
+
+    // ============================================================
+
+    // Medical Admin → Approve
+
+    // ============================================================
+
+    @PreAuthorize("hasAuthority('ROLE_MEDICAL_ADMIN')")
+
+    @PatchMapping("/{id}/approve-medical")
+
+    public ResponseEntity<?> approveMedical(@PathVariable UUID id, Authentication auth) {
+
         try {
-            return ResponseEntity.ok(claimService.approveClaim(id));
+
+            Client reviewer = clientRepo.findByEmail(auth.getName().toLowerCase())
+                    .orElseThrow(() -> new NotFoundException("Reviewer not found"));
+
+            return ResponseEntity.ok(claimService.approveMedical(id, reviewer.getId()));
+
+
         } catch (NotFoundException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("message", e.getMessage());
-            return ResponseEntity.status(404).body(null);
+
+            return ResponseEntity.status(404).body(Map.of("message", e.getMessage()));
+
         }
+
     }
 
-    // ✅ رفض المطالبة - للمدير فقط
-    @PreAuthorize("hasAuthority('ROLE_INSURANCE_MANAGER')")
-    @PatchMapping("/{id}/reject")
-    public ResponseEntity<HealthcareProviderClaimDTO> rejectClaim(
+    // ============================================================
+
+    // Medical Admin → Reject
+
+    // ============================================================
+
+    @PreAuthorize("hasAuthority('ROLE_MEDICAL_ADMIN')")
+
+    @PatchMapping("/{id}/reject-medical")
+
+    public ResponseEntity<?> rejectMedical(
+
             @PathVariable UUID id,
-            @RequestBody RejectClaimDTO dto
-    ) {
+
+            @RequestBody RejectClaimDTO dto,
+
+            Authentication auth) {
+
         try {
-            return ResponseEntity.ok(claimService.rejectClaim(id, dto));
+
+            Client reviewer = clientRepo.findByEmail(auth.getName().toLowerCase())
+                    .orElseThrow(() -> new NotFoundException("Reviewer not found"));
+
+            return ResponseEntity.ok(claimService.rejectMedical(id, dto.getReason(), reviewer.getId()));
+
+
         } catch (NotFoundException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("message", e.getMessage());
-            return ResponseEntity.status(404).body(null);
+
+            return ResponseEntity.status(404).body(Map.of("message", e.getMessage()));
+
         }
+
     }
 
+<<<<<<< HEAD
     // ===== NEW ENDPOINTS FOR MEDICAL REVIEW WORKFLOW =====
 
     // ✅ جلب المطالبات لمراجعة طبية (PENDING + RETURNED_FOR_REVIEW)
@@ -259,5 +457,85 @@ public class HealthcareProviderClaimController {
             return ResponseEntity.status(404).body(null);
         }
     }
+=======
+    @PreAuthorize("hasAnyAuthority('ROLE_COORDINATION_ADMIN','ROLE_INSURANCE_MANAGER')")
+    @GetMapping(value = "/reports/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> exportReportsPdf(
+
+            @RequestParam ReportType type,
+            @RequestParam(required = false) ClaimStatus status,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate from,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate to
+    ) {
+
+        byte[] pdf = claimService.exportReportPdf(
+                type,
+                status,
+                from,
+                to
+        );
+
+        return ResponseEntity.ok()
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=report_" + type.name().toLowerCase() + ".pdf"
+                )
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
+    }
+
+
+    @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
+    @PostMapping(value = "/admin/create-direct", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> createClaimByAdmin(
+            Authentication auth,
+            @RequestPart("data") String json,
+            @RequestPart(value = "document", required = false) MultipartFile document
+    ) throws IOException {
+
+        Client admin = clientRepo.findByEmail(auth.getName().toLowerCase())
+                .orElseThrow(() -> new NotFoundException("Admin not found"));
+
+        CreateHealthcareProviderClaimDTO dto =
+                objectMapper.readValue(json, CreateHealthcareProviderClaimDTO.class);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(claimService.createClaimByCoordinationAdmin(
+                        admin.getId(),
+                        dto,
+                        document
+                ));
+    }
+
+    @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
+    @PatchMapping("/{id}/return-to-medical")
+    public ResponseEntity<?> returnToMedical(
+            @PathVariable UUID id,
+            @RequestBody RejectReasonDTO dto,
+            Authentication auth
+    ) {
+        Client reviewer = clientRepo.findByEmail(auth.getName().toLowerCase())
+                .orElseThrow(() -> new NotFoundException("Coordinator not found"));
+
+        return ResponseEntity.ok(
+                claimService.returnToMedical(id, dto.getReason(), reviewer.getId())
+        );
+    }
+
+    @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
+    @GetMapping("/coordination-review")
+    public ResponseEntity<?> coordinationReviewList() {
+        return ResponseEntity.ok(
+                claimService.getClaimsForCoordinationReview()
+        );
+    }
+
+>>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8
 }
 

@@ -12,6 +12,7 @@ public class CreateHealthcareProviderClaimDTO {
     private Double amount;
     private LocalDate serviceDate;
     private String roleSpecificData; // JSON: medicines, testResults, imaging, etc
+<<<<<<< HEAD
 
     // Additional fields for better claim info
     private String diagnosis;
@@ -43,5 +44,11 @@ public class CreateHealthcareProviderClaimDTO {
     private String familyMemberGender;
     private String familyMemberInsuranceNumber;
     private String familyMemberNationalId;
+=======
+    private String providerRole;
+    private String employeeId;
+    private String diagnosis;         // NEW
+    private String treatmentDetails;  // NEW
+>>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8
 }
 

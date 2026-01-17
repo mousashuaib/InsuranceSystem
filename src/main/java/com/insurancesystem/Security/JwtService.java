@@ -30,15 +30,16 @@ public class JwtService {
     }
 
     // أبسط توليد
-    public String generateToken(String username) {
-        return generateToken(username, Map.of());
+    public String generateToken(String email) {
+        return generateToken(email, Map.of());
     }
 
+
     // توليد مع Claims إضافية (اختياري)
-    public String generateToken(String username, Map<String, Object> extraClaims) {
+    public String generateToken(String email, Map<String, Object> extraClaims) {
         long now = System.currentTimeMillis();
         JwtBuilder builder = Jwts.builder()
-                .setSubject(username)
+                .setSubject(email)
                 .setIssuedAt(new Date(now))
                 .setExpiration(new Date(now + ttlMillis))
                 .signWith(key, SignatureAlgorithm.HS256);

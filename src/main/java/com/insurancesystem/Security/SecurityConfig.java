@@ -37,7 +37,8 @@ public class SecurityConfig {
                                 "/api/doctor-specializations/**",  // للتسجيل
                                 "/api/policies/public/**",         // للتسجيل
                                 "/uploads/**",
-                                "/ws-chat/**"      // 👈 السماح بالـ WebSocket endpoint
+                                "/ws-chat/**",      // 👈 السماح بالـ WebSocket endpoint
+                                "/api/doctor-specializations"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

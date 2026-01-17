@@ -4,6 +4,7 @@ import com.insurancesystem.Model.Entity.Enums.RoleName;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.util.Set;
 
 @Data
@@ -12,8 +13,6 @@ import java.util.Set;
 @AllArgsConstructor
 public class CreateClientDto {
 
-    @NotBlank @Size(min = 3, max = 64)
-    private String username;
 
     @NotBlank @Size(min = 8, max = 72)
     private String password; // سيُشفّر في Service
@@ -26,6 +25,15 @@ public class CreateClientDto {
 
     @Size(max = 40)
     private String phone;
+
+    @NotNull
+    private LocalDate dateOfBirth;
+
+    @NotBlank
+    @Size(min = 9, max = 20)
+    private String nationalId;
+
+    private String gender;
 
     @NotEmpty
     private Set<RoleName> roles;

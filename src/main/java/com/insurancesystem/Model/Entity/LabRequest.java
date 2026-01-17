@@ -45,6 +45,12 @@ public class LabRequest {
 
     private Double enteredPrice; // السعر الذي دخله اللاب تِك
     private Double approvedPrice; // السعر المعتمد (الأقل من النقابي)
+    // 🔥 NEW
+    @Column(columnDefinition = "TEXT")
+    private String diagnosis;
+
+    @Column(columnDefinition = "TEXT")
+    private String treatment;
 
     private Instant createdAt;
     private Instant updatedAt;

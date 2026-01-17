@@ -3,13 +3,17 @@ package com.insurancesystem.Services;
 import com.insurancesystem.Exception.BadRequestException;
 import com.insurancesystem.Exception.NotFoundException;
 import com.insurancesystem.Model.Dto.ClientDto;
+import com.insurancesystem.Model.Dto.CoordinatorClientLookupDTO;
 import com.insurancesystem.Model.Dto.UpdateUserDTO;
 import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.Entity.Enums.MemberStatus;
+import com.insurancesystem.Model.Entity.Enums.ProfileStatus;
 import com.insurancesystem.Model.Entity.Enums.RoleName;
 import com.insurancesystem.Model.Entity.Enums.RoleRequestStatus;
+import com.insurancesystem.Model.Entity.FamilyMember;
 import com.insurancesystem.Model.MapStruct.ClientMapper;
 import com.insurancesystem.Repository.ClientRepository;
+import com.insurancesystem.Repository.FamilyMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +31,7 @@ import java.util.UUID;
 public class ClientServices {
 
     private final ClientRepository clientRepo;
+    private final FamilyMemberRepository familyMemberRepository;
     private final RoleService roleService;
     private final ClientMapper clientMapper;
     private final EmailService emailService;
@@ -45,24 +50,42 @@ public class ClientServices {
         return clientMapper.toDTO(user);
     }
 
-    public ClientDto update(UUID id, UpdateUserDTO dto, MultipartFile universityCard) {
+    public ClientDto update(UUID id, UpdateUserDTO dto, MultipartFile[] universityCards)
+    {
         Client user = clientRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
         clientMapper.updateEntityFromDTO(dto, user);
+        // تحديث الحقول الجديدة
+        if (dto.getNationalId() != null) {
+            user.setNationalId(dto.getNationalId());
+        }
 
-        if (universityCard != null && !universityCard.isEmpty()) {
-            String fileName = UUID.randomUUID() + "_" + universityCard.getOriginalFilename();
+        if (dto.getDateOfBirth() != null) {
+            user.setDateOfBirth(dto.getDateOfBirth());
+        }
+        if (universityCards != null && universityCards.length > 0) {
             Path uploadPath = Paths.get("uploads/cards");
             try {
                 if (!Files.exists(uploadPath)) {
                     Files.createDirectories(uploadPath);
                 }
-                Path filePath = uploadPath.resolve(fileName);
-                Files.copy(universityCard.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-                user.setUniversityCardImage("/uploads/cards/" + fileName);
+
+                for (MultipartFile file : universityCards) {
+                    if (file == null || file.isEmpty()) continue;
+
+                    String original = file.getOriginalFilename();
+                    String safeName = original == null ? "file" : original.replaceAll("[^a-zA-Z0-9._-]", "_");
+                    String fileName = UUID.randomUUID() + "_" + safeName;
+                    Path filePath = uploadPath.resolve(fileName);
+
+                    Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+                    // ✅ أضف المسار للقائمة
+                    user.getUniversityCardImages().add("/uploads/cards/" + fileName);
+                }
             } catch (IOException e) {
-                throw new RuntimeException("❌ Failed to save university card image", e);
+                throw new RuntimeException("❌ Failed to save university card images", e);
             }
         }
 
@@ -71,12 +94,7 @@ public class ClientServices {
         return clientMapper.toDTO(user);
     }
 
-    @Transactional(readOnly = true)
-    public ClientDto getByUsername(String username) {
-        var user = clientRepo.findByUsername(username.toLowerCase())
-                .orElseThrow(() -> new NotFoundException("User not found"));
-        return clientMapper.toDTO(user);
-    }
+
 
     @Transactional(readOnly = true)
     public List<ClientDto> listUsersWithPendingRole() {
@@ -98,15 +116,22 @@ public class ClientServices {
         u.setStatus(MemberStatus.ACTIVE);
         u.setRoleRequestStatus(RoleRequestStatus.APPROVED);
         u.setRequestedRole(null);
+
+        // تخصيص الأدوار بحيث:
+        // إذا كان الدور هو "INSURANCE_CLIENT"، يتم إرسال إشعار للمسؤول الطبي
+        if (role.getName() == RoleName.INSURANCE_CLIENT) {
+            notificationService.sendToUser(u.getId(), "تمت الموافقة على حسابك كعميل. يمكنك تسجيل الدخول الآن.");
+            // إرسال إشعار للمسؤول الطبي
+            notificationService.sendToRole(RoleName.MEDICAL_ADMIN, "تمت الموافقة على طلبك كعميل: " + u.getFullName());
+        } else {
+            notificationService.sendToUser(u.getId(), "تمت الموافقة على طلب دورك.");
+        }
+
         clientRepo.save(u);
-
         emailService.sendRoleApprovalEmail(u.getEmail(), u.getFullName(), role.getName());
-        notificationService.sendToUser(u.getId(), "تمت الموافقة على حسابك. يمكنك تسجيل الدخول الآن.");
-        notificationService.markNotificationAsReadByMessage(RoleName.INSURANCE_MANAGER,
-                "مستخدم جديد (" + u.getFullName() + ") سجل وينتظر الموافقة.");
-
         return clientMapper.toDTO(u);
     }
+
 
     @Transactional
     public void rejectRoleRequest(UUID clientId, String reason) {
@@ -129,9 +154,11 @@ public class ClientServices {
                 "مستخدم جديد (" + u.getFullName() + ") سجل وينتظر الموافقة.");
     }
 
-    public ClientDto updateByUsername(String username, UpdateUserDTO dto, MultipartFile universityCard) {
-        Client client = clientRepo.findByUsername(username)
+    public ClientDto updateByEmail(String email, UpdateUserDTO dto, MultipartFile[] universityCards) {
+        Client client = clientRepo.findByEmail(email.toLowerCase())
                 .orElseThrow(() -> new RuntimeException("Client not found"));
+
+
 
         if (dto.getFullName() != null && !dto.getFullName().isBlank()) {
             client.setFullName(dto.getFullName());
@@ -143,20 +170,43 @@ public class ClientServices {
             client.setPhone(dto.getPhone());
         }
 
-        if (universityCard != null && !universityCard.isEmpty()) {
+        // تحديث الحقول الجديدة
+        if (dto.getNationalId() != null) {
+            client.setNationalId(dto.getNationalId());
+        }
+
+        if (dto.getDateOfBirth() != null) {
+            client.setDateOfBirth(dto.getDateOfBirth());
+        }
+        if (universityCards != null && universityCards.length > 0) {
             try {
-                String fileName = UUID.randomUUID() + "_" + universityCard.getOriginalFilename();
                 Path uploadPath = Paths.get("uploads/profile");
                 if (!Files.exists(uploadPath)) {
                     Files.createDirectories(uploadPath);
                 }
-                Path filePath = uploadPath.resolve(fileName);
-                Files.copy(universityCard.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-                client.setUniversityCardImage("/uploads/profile/" + fileName);
+
+                // ✅ امسحي القديم قبل ما ترفعي الجديد (حل مشكلتك)
+                client.getUniversityCardImages().clear();
+
+                for (MultipartFile file : universityCards) {
+                    if (file == null || file.isEmpty()) continue;
+
+                    String original = file.getOriginalFilename();
+                    String safeName = original == null ? "file" : original.replaceAll("[^a-zA-Z0-9._-]", "_");
+                    String fileName = UUID.randomUUID() + "_" + safeName;
+                    Path filePath = uploadPath.resolve(fileName);
+
+                    Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+                    // ✅ خزّني فقط المسار الصحيح
+                    client.getUniversityCardImages().add("/uploads/profile/" + fileName);
+                }
+
             } catch (IOException e) {
-                throw new RuntimeException("❌ Failed to save profile image", e);
+                throw new RuntimeException("❌ Failed to save profile images", e);
             }
         }
+
 
         client.setUpdatedAt(Instant.now());
         Client updated = clientRepo.save(client);
@@ -210,7 +260,7 @@ public class ClientServices {
         notificationService.sendToUser(client.getId(), "✅ تم إعادة تفعيل حسابك بنجاح.");
     }
 
- 
+
 
     /**
      * 🆔 Find client by employee ID
@@ -239,5 +289,87 @@ public class ClientServices {
                 .orElseThrow(() -> new NotFoundException("Client not found with name: " + fullName));
         return clientMapper.toDTO(client);
     }
+    @Transactional(readOnly = true)
+    public ClientDto getByEmail(String email) {
+        Client client = clientRepo.findByEmail(email.toLowerCase())
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        return clientMapper.toDTO(client);
+    }
+    public void clearUniversityCardsByEmail(String email) {
+        Client client = clientRepo.findByEmail(email.toLowerCase())
+                .orElseThrow(() -> new RuntimeException("Client not found"));
+        for (String pathStr : client.getUniversityCardImages()) {
+            try {
+                if (pathStr != null && pathStr.startsWith("/uploads/")) {
+                    // pathStr مثل: /uploads/profile/abc.png
+                    Path filePath = Paths.get(pathStr.substring(1)); // remove leading "/"
+                    Files.deleteIfExists(filePath);
+                }
+            } catch (Exception ignored) {}
+        }
+        client.getUniversityCardImages().clear();
+
+        client.getUniversityCardImages().clear();
+        client.setUpdatedAt(Instant.now());
+        clientRepo.save(client);
+    }
+    public ClientDto findClientForCoordinatorClaim(
+            CoordinatorClientLookupDTO dto
+    ) {
+
+        if (
+                (dto.getFullName() == null || dto.getFullName().isBlank()) &&
+                        (dto.getEmployeeId() == null || dto.getEmployeeId().isBlank()) &&
+                        (dto.getNationalId() == null || dto.getNationalId().isBlank()) &&
+                        (dto.getPhone() == null || dto.getPhone().isBlank())
+        ) {
+            throw new BadRequestException("At least one search field is required");
+        }
+
+        Client client = clientRepo.findForCoordinatorClaim(
+                dto.getFullName(),
+                dto.getEmployeeId(),
+                dto.getNationalId(),
+                dto.getPhone()
+        ).orElseThrow(() ->
+                new NotFoundException("No matching client found")
+        );
+
+        // تأكيد أن المستخدم مؤمن
+        boolean isInsuranceClient = client.getRoles().stream()
+                .anyMatch(r -> r.getName() == RoleName.INSURANCE_CLIENT);
+
+        if (!isInsuranceClient) {
+            throw new BadRequestException("User is not an insurance client");
+        }
+
+        return clientMapper.toDTO(client);
+    }
+
+    @Transactional
+    public void approveClientRoleRequest(UUID clientId) {
+
+        Client client = clientRepo.findById(clientId)
+                .orElseThrow(() -> new NotFoundException("Client not found"));
+
+        // 1️⃣ تفعيل الكلاينت
+        client.setStatus(MemberStatus.ACTIVE);
+        client.setRoleRequestStatus(RoleRequestStatus.APPROVED);
+
+        // 2️⃣ إعطاؤه الدور المطلوب
+        addRoleToClient(client.getId(), client.getRequestedRole());
+
+        // 3️⃣ 🔥 قبول كل أفراد العائلة
+        List<FamilyMember> family = familyMemberRepository.findByClient_Id(clientId);
+
+        for (FamilyMember member : family) {
+            if (member.getStatus() == ProfileStatus.PENDING) {
+                member.setStatus(ProfileStatus.APPROVED);
+            }
+        }
+
+        clientRepo.save(client);
+    }
+
 }
 

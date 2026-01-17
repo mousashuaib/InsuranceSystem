@@ -29,9 +29,10 @@ public class NotificationController {
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     public void sendNotification(@RequestBody CreateNotificationManualDTO dto, Authentication auth) {
-        String senderUsername = auth.getName();
-        Client sender = clientRepo.findByUsername(senderUsername)
+        String senderEmail = auth.getName().toLowerCase();
+        Client sender = clientRepo.findByEmail(senderEmail)
                 .orElseThrow(() -> new RuntimeException("Sender not found"));
+
 
         notificationService.createNotification(sender.getId(), dto.getRecipientId(), dto.getMessage(), null);
     }
@@ -42,9 +43,10 @@ public class NotificationController {
     public void replyNotification(@PathVariable UUID notificationId,
                                   @RequestBody CreateNotificationManualDTO dto,
                                   Authentication auth) {
-        String senderUsername = auth.getName();
-        Client sender = clientRepo.findByUsername(senderUsername)
+        String senderEmail = auth.getName().toLowerCase();
+        Client sender = clientRepo.findByEmail(senderEmail)
                 .orElseThrow(() -> new RuntimeException("Sender not found"));
+
 
         notificationService.createNotification(sender.getId(), dto.getRecipientId(), dto.getMessage(), notificationId);
     }
@@ -53,18 +55,20 @@ public class NotificationController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public List<NotificationDTO> getMyNotifications(Authentication auth) {
-        String username = auth.getName();
-        Client user = clientRepo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String senderEmail = auth.getName().toLowerCase();
+        Client user = clientRepo.findByEmail(senderEmail)
+                .orElseThrow(() -> new RuntimeException("user not found"));
+
         return notificationService.getUserNotifications(user.getId());
     }
 
     @PatchMapping("/read-all")
     @PreAuthorize("isAuthenticated()")
     public void markAllAsRead(Authentication auth) {
-        String username = auth.getName();
-        Client user = clientRepo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String senderEmail = auth.getName().toLowerCase();
+        Client user = clientRepo.findByEmail(senderEmail)
+                .orElseThrow(() -> new RuntimeException("user not found"));
+
         notificationService.markAllAsRead(user.getId());
     }
 
@@ -72,18 +76,18 @@ public class NotificationController {
     @PatchMapping("/{id}/read")
     @PreAuthorize("isAuthenticated()")
     public void markAsRead(@PathVariable UUID id, Authentication auth) {
-        String username = auth.getName();
-        Client user = clientRepo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String senderEmail = auth.getName().toLowerCase();
+        Client user = clientRepo.findByEmail(senderEmail)
+                .orElseThrow(() -> new RuntimeException("user not found"));
         notificationService.markAsRead(id, user);
     }
 
     @GetMapping("/unread-count")
     @PreAuthorize("isAuthenticated()")
     public long getUnreadCount(Authentication auth) {
-        String username = auth.getName();
-        Client user = clientRepo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String senderEmail = auth.getName().toLowerCase();
+        Client user = clientRepo.findByEmail(senderEmail)
+                .orElseThrow(() -> new RuntimeException("user not found"));
         return notificationService.countUnreadNotifications(user.getId());
     }
 
@@ -91,9 +95,9 @@ public class NotificationController {
     @GetMapping("/unread-count/emergency")
     @PreAuthorize("hasRole('EMERGENCY_MANAGER')")
     public long getUnreadEmergencyCount(Authentication auth) {
-        String username = auth.getName();
-        Client user = clientRepo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String senderEmail = auth.getName().toLowerCase();
+        Client user = clientRepo.findByEmail(senderEmail)
+                .orElseThrow(() -> new RuntimeException("user not found"));
         return notificationService.countUnreadEmergencyNotifications(user.getId());
     }
 
@@ -101,9 +105,9 @@ public class NotificationController {
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<String> deleteNotification(@PathVariable UUID id, Authentication auth) {
-        String username = auth.getName();
-        Client user = clientRepo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String senderEmail = auth.getName().toLowerCase();
+        Client user = clientRepo.findByEmail(senderEmail)
+                .orElseThrow(() -> new RuntimeException("user not found"));
 
         notificationService.deleteNotification(user.getId(), id);
         return ResponseEntity.ok("✅ Notification deleted successfully");
@@ -112,17 +116,22 @@ public class NotificationController {
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/by-name")
     public void sendByName(@RequestBody CreateNotificationManualDTO dto, Authentication auth) {
-        notificationService.createNotificationByName(
-                auth.getName(), dto.getRecipientName(), dto.getMessage(), dto.getType(), null
+        notificationService.createNotificationByEmail(
+                auth.getName(),              // senderEmail
+                dto.getRecipientName(),      // لازم تكون recipientEmail (عدّل اسم الحقل بالـ DTO)
+                dto.getMessage(),
+                dto.getType(),
+                null
         );
+
     }
 
     @DeleteMapping("/{id}/client")
     @PreAuthorize("isAuthenticated()")
     public void clientDelete(@PathVariable UUID id, Authentication auth) {
-        String username = auth.getName();
-        Client client = clientRepo.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Client not found"));
+        String senderEmail = auth.getName().toLowerCase();
+        Client client = clientRepo.findByEmail(senderEmail)
+                .orElseThrow(() -> new RuntimeException("client not found"));
         notificationService.clientDeleteNotification(client.getId(), id);
     }
 
@@ -134,9 +143,10 @@ public class NotificationController {
     @PostMapping("/by-fullname")
     @PreAuthorize("isAuthenticated()")
     public void sendByFullName(@RequestBody CreateNotificationManualDTO dto, Authentication auth) {
-        String username = auth.getName();
-        Client sender = clientRepo.findByUsername(username)
+        String senderEmail = auth.getName().toLowerCase();
+        Client sender = clientRepo.findByEmail(senderEmail)
                 .orElseThrow(() -> new RuntimeException("Sender not found"));
+
 
         notificationService.createNotificationByFullName(
                 sender.getFullName(),

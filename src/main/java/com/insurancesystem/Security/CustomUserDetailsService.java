@@ -19,10 +19,11 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        var user = clientRepo.findByUsername(username.toLowerCase())
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        var user = clientRepo.findByEmail(email.toLowerCase())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
+<<<<<<< HEAD
         // Get authorities from roles
         List<SimpleGrantedAuthority> authorities = new ArrayList<>(
                 user.getRoles().stream()
@@ -39,10 +40,21 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getUsername())
+=======
+        var authorities = user.getRoles().stream()
+                .map(r -> new SimpleGrantedAuthority("ROLE_" + r.getName().name()))
+                .toList();
+
+        return User.withUsername(user.getEmail())
+>>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8
                 .password(user.getPasswordHash())
                 .authorities(authorities)
                 .accountLocked(false)
                 .disabled(false)
                 .build();
     }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8

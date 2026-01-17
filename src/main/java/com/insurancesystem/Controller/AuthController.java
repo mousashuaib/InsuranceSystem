@@ -1,6 +1,8 @@
 package com.insurancesystem.Controller;
 
+import com.insurancesystem.Exception.BadRequestException;
 import com.insurancesystem.Model.Dto.ClientDto;
+import com.insurancesystem.Model.Dto.VerifyEmailRequest;
 import com.insurancesystem.Model.Dto.auth.*;
 import com.insurancesystem.Security.JwtService;
 import com.insurancesystem.Services.AuthService;
@@ -26,10 +28,20 @@ public class AuthController {
     @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<RegisterResponse> register(
             @RequestPart("data") String reqJson,
-            @RequestPart(value = "universityCard", required = false) MultipartFile universityCard) {
+            @RequestPart(value = "universityCard", required = false) MultipartFile[] universityCard,
+            @RequestPart(value = "familyDocuments", required = false) MultipartFile[] familyDocuments,
+            @RequestPart(value = "chronicDocuments", required = false) MultipartFile[] chronicDocuments,
+            @RequestPart(value = "familyDocumentsOwners", required = false) String familyDocumentsOwnersJson
 
-        // تسجيل المستخدم العادي (ليس مدير)
-        var out = authService.register(reqJson, universityCard, false);
+            ) {
+        var out = authService.register(
+                reqJson,
+                universityCard,
+                familyDocuments,
+                chronicDocuments,
+                familyDocumentsOwnersJson,
+                false
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(out);
     }
 
@@ -37,26 +49,47 @@ public class AuthController {
     @PostMapping(value = "/admin/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<RegisterResponse> registerByAdmin(
             @RequestPart("data") String reqJson,
-            @RequestPart(value = "universityCard", required = false) MultipartFile universityCard) {
+            @RequestPart(value = "universityCard", required = false) MultipartFile[] universityCard,
+            @RequestPart(value = "familyDocuments", required = false) MultipartFile[] familyDocuments,
+            @RequestPart(value = "chronicDocuments", required = false) MultipartFile[] chronicDocuments,
+            @RequestPart(value = "familyDocumentsOwners", required = false) String familyDocumentsOwnersJson
 
-        // تسجيل عن طريق المدير
-        var out = authService.register(reqJson, universityCard, true);
+    ) {
+
+        var out = authService.register(
+                reqJson,
+                universityCard,
+                familyDocuments,
+                chronicDocuments,
+                familyDocumentsOwnersJson,
+                true
+        );
+
+
         return ResponseEntity.status(HttpStatus.CREATED).body(out);
     }
 
 
+
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest req) {
-        var out = authService.login(req);
-        return ResponseEntity.ok(out);
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req) {
+        try {
+            var out = authService.login(req);
+            return ResponseEntity.ok(out);
+        } catch (BadRequestException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(java.util.Map.of("message", e.getMessage()));
+        }
     }
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/me")
     public ResponseEntity<ClientDto> me() {
-        String username = org.springframework.security.core.context.SecurityContextHolder
+        String email = org.springframework.security.core.context.SecurityContextHolder
                 .getContext().getAuthentication().getName();
-        return ResponseEntity.ok(clientServices.getByUsername(username));
+
+        return ResponseEntity.ok(clientServices.getByEmail(email));
+
     }
 
     @PreAuthorize("isAuthenticated()")
@@ -94,4 +127,13 @@ public class AuthController {
         authService.resetPassword(req.getToken(), req.getNewPassword());
         return ResponseEntity.ok("Password has been reset successfully");
     }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<String> verifyEmail(
+            @RequestBody VerifyEmailRequest req) {
+
+        authService.verifyEmail(req.getEmail(), req.getCode());
+        return ResponseEntity.ok("Email verified successfully");
+    }
+
 }

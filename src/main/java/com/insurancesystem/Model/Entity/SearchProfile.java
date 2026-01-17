@@ -50,7 +50,21 @@ public class SearchProfile {
     @Column(length = 300)
     private String rejectionReason; // ✅ سبب الرفض (إن وجد)
 
+    // ✅ New Document Fields
+    @Column(nullable = true, length = 300)
+    private String medicalLicense;
+
+    @Column(nullable = true, length = 300)
+    private String universityDegree;
+
+    @Column(nullable = true, length = 300)
+    private String idOrPassportCopy;
+    @Column(nullable = true, length = 300)
+
+    private String clinicRegistration; // تسجيل العيادة (Optional)
+
+
     public String getPhone() {
-        return contactInfo; // ✅ رقم الهاتف أو الإيميل
+        return contactInfo;
     }
 }

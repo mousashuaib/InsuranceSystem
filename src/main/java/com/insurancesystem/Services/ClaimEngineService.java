@@ -1,8 +1,8 @@
 package com.insurancesystem.Services;
 
 import com.insurancesystem.Model.Entity.Coverage;
+import com.insurancesystem.Model.Entity.HealthcareProviderClaim;
 import com.insurancesystem.Model.Entity.Policy;
-import com.insurancesystem.Model.Entity.Claim;
 import com.insurancesystem.Repository.CoverageRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,7 +14,7 @@ public class ClaimEngineService {
 
     private final CoverageRepository coverageRepo;
 
-    public Claim applyCoverageRules(Claim claim) {
+    public HealthcareProviderClaim applyCoverageRules(HealthcareProviderClaim claim) {
 
         Policy policy = claim.getPolicy();
 

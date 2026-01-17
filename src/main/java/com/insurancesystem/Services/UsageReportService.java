@@ -10,19 +10,27 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class UsageReportService {
 
-    private final ClaimRepository claimRepo;
+    private final HealthcareProviderClaimRepository claimRepo;
     private final PrescriptionRepository prescriptionRepo;
     private final LabRequestRepository labRepo;
     private final EmergencyRequestRepository emergencyRepo;
-    private final MedicalRecordRepository recordRepo;
+    private final DocotrRepository recordRepo;
 
     public UsageReportDto generateReport() {
         return UsageReportDto.builder()
                 // Claims
                 .totalClaims(claimRepo.count())
-                .approvedClaims(claimRepo.countByStatus(ClaimStatus.APPROVED))
-                .rejectedClaims(claimRepo.countByStatus(ClaimStatus.REJECTED))
-                .pendingClaims(claimRepo.countByStatus(ClaimStatus.PENDING))
+                .approvedClaims(
+                        claimRepo.countByStatus(ClaimStatus.APPROVED_FINAL)
+                )
+                .rejectedClaims(
+                        claimRepo.countByStatus(ClaimStatus.REJECTED_FINAL)
+                )
+                .pendingClaims(
+                        claimRepo.countByStatus(ClaimStatus.PENDING_MEDICAL)
+                                + claimRepo.countByStatus(ClaimStatus.RETURNED_FOR_REVIEW)
+                )
+
 
                 // Prescriptions
                 .totalPrescriptions(prescriptionRepo.count())
@@ -37,9 +45,9 @@ public class UsageReportService {
 
                 // Emergency Requests
                 .totalEmergencyRequests(emergencyRepo.count())
-                .approvedEmergencyRequests(emergencyRepo.findByStatus(EmergencyStatus.APPROVED).size())
-                .rejectedEmergencyRequests(emergencyRepo.findByStatus(EmergencyStatus.REJECTED).size())
-                .pendingEmergencyRequests(emergencyRepo.findByStatus(EmergencyStatus.PENDING).size())
+                .approvedEmergencyRequests(emergencyRepo.findByStatus(EmergencyStatus.APPROVED_BY_MEDICAL).size())
+                .rejectedEmergencyRequests(emergencyRepo.findByStatus(EmergencyStatus.REJECTED_BY_MEDICAL).size())
+                .pendingEmergencyRequests(emergencyRepo.findByStatus(EmergencyStatus.PENDING_MEDICAL).size())
 
                 // Medical Records
                 .totalMedicalRecords(recordRepo.count())

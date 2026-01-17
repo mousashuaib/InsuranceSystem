@@ -1,6 +1,7 @@
 package com.insurancesystem.Model.Entity.Enums;
 
 public enum ClaimStatus {
+<<<<<<< HEAD
     PENDING, // بانتظار المراجعة الطبية
     PENDING_MEDICAL, // New: Pending medical review
     APPROVED_BY_MEDICAL, // تمت الموافقة الطبية
@@ -18,4 +19,12 @@ public enum ClaimStatus {
     RETURNED_TO_PROVIDER, // New: Returned to provider
     PAYMENT_PENDING, // New: Payment pending
     PAID // New: Paid
+=======
+    PENDING_MEDICAL,   // أول مرة
+    AWAITING_COORDINATION_REVIEW,  // موافقة طبية - في انتظار مراجعة المنسق
+    APPROVED_FINAL,           // موافقة نهائية (بعد موافقة المنسق)
+    REJECTED_FINAL,           // رفض نهائي
+    RETURNED_FOR_REVIEW       // أُعيدت من المنسق للطبيب
+
+>>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8
 }

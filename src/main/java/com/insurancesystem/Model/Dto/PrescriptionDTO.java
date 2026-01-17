@@ -18,11 +18,15 @@ public class PrescriptionDTO {
 
     // الحالة
     private String status;
+    private String diagnosis;
+    private String treatment;
 
     // الأشخاص المعنيين
     private UUID memberId;
     private String memberName;
-
+    private String employeeId;
+    private List<String> universityCardImages;
+    private String universityCardImage; // First university card image (for easier access)
     private String doctorName;
 
     private UUID pharmacistId;
@@ -44,4 +48,24 @@ public class PrescriptionDTO {
     private Long pending;
     private Long verified;
     private Long rejected;
+
+    // 🆕 Family Member Information (if prescription is for a family member)
+    private Boolean isFamilyMember;
+    private String familyMemberName;
+    private String familyMemberRelation;
+    private String familyMemberInsuranceNumber;
+    private String familyMemberAge;
+    private String familyMemberGender;
+
+    // 🆕 Main Client Information (age and gender)
+    private String memberAge;
+    private String memberGender;
+    private String memberNationalId; // National ID of the main client/patient
+
+    // 🆕 Family Member National ID
+    private String familyMemberNationalId; // National ID of the family member
+
+    // 🆕 Chronic Disease Prescription Flag
+    private Boolean isChronic;
 }
+

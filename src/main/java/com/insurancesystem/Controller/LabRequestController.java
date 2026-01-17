@@ -92,12 +92,13 @@ public class LabRequestController {
     public ResponseEntity<ClientDto> updateLabWorkerProfile(
             Authentication auth,
             @RequestPart("data") @Valid UpdateUserDTO dto,
-            @RequestPart(value = "universityCard", required = false) MultipartFile universityCard
+            @RequestPart(value = "universityCard", required = false) MultipartFile[] universityCard
     ) {
         String username = auth.getName();
         ClientDto updated = labService.updateLabWorkerProfile(username, dto, universityCard);
         return ResponseEntity.ok(updated);
     }
+
 
     // 📖 Lab Tech يشوف كل طلباته
     @GetMapping("/my-requests")

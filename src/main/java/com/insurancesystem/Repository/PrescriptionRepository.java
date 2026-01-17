@@ -5,7 +5,6 @@ import com.insurancesystem.Model.Entity.Enums.PrescriptionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
 import java.util.List;
 import java.util.UUID;
 
@@ -19,17 +18,14 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
 
     // 🔹 إحصائيات الدكتور
     long countByDoctorId(UUID doctorId);
-
     long countByDoctorIdAndStatus(UUID doctorId, PrescriptionStatus status);
 
     // 🔹 إحصائيات عامة
     long countByStatus(PrescriptionStatus status);
-
     long countByMemberIdAndStatus(UUID memberId, PrescriptionStatus status);
 
     // 🔹 إحصائيات الصيدلي
     long countByPharmacistId(UUID pharmacistId);
-
     long countByPharmacistIdAndStatus(UUID pharmacistId, PrescriptionStatus status);
 
     // 🔹 الوصفات حسب الدكتور
@@ -56,4 +52,37 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
 
     // 🔹 البحث عن وصفات الصيدلي والحالة
     List<Prescription> findByPharmacistIdAndStatus(UUID pharmacistId, PrescriptionStatus status);
+
+    // ✅ Custom queries with JOIN FETCH to eagerly load member with dateOfBirth and gender
+    // Using JOIN FETCH ensures member entity is fully loaded including dateOfBirth and gender
+    @Query("SELECT DISTINCT p FROM Prescription p " +
+            "LEFT JOIN FETCH p.member m " +
+            "LEFT JOIN FETCH p.doctor d " +
+            "LEFT JOIN FETCH p.pharmacist ph " +
+            "WHERE p.status = :status")
+    List<Prescription> findByStatusWithMember(@Param("status") PrescriptionStatus status);
+
+    // ✅ Use JOIN FETCH to eagerly load member with all fields including dateOfBirth and gender
+    // The DISTINCT is needed because JOIN FETCH can create duplicates
+    @Query("SELECT DISTINCT p FROM Prescription p " +
+           "LEFT JOIN FETCH p.member m " +
+           "LEFT JOIN FETCH p.doctor d " +
+           "LEFT JOIN FETCH p.pharmacist ph " +
+           "WHERE p.pharmacist.id = :pharmacistId " +
+           "ORDER BY p.createdAt DESC")
+    List<Prescription> findByPharmacistIdWithMember(@Param("pharmacistId") UUID pharmacistId);
+
+    @Query("SELECT DISTINCT p FROM Prescription p " +
+            "LEFT JOIN FETCH p.member m " +
+            "LEFT JOIN FETCH p.doctor d " +
+            "LEFT JOIN FETCH p.pharmacist ph " +
+            "WHERE p.member.id = :memberId")
+    List<Prescription> findByMemberIdWithMember(@Param("memberId") UUID memberId);
+
+    @Query("SELECT DISTINCT p FROM Prescription p " +
+            "LEFT JOIN FETCH p.member m " +
+            "LEFT JOIN FETCH p.doctor d " +
+            "LEFT JOIN FETCH p.pharmacist ph " +
+            "WHERE p.doctor.id = :doctorId")
+    List<Prescription> findByDoctorIdWithMember(@Param("doctorId") UUID doctorId);
 }

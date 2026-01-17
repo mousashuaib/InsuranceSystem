@@ -1,7 +1,7 @@
 package com.insurancesystem.Controller;
 
-import com.insurancesystem.Repository.ClaimRepository;
 import com.insurancesystem.Repository.ClientRepository;
+import com.insurancesystem.Repository.HealthcareProviderClaimRepository;
 import com.insurancesystem.Repository.PolicyRepository;
 import com.insurancesystem.Model.Entity.Enums.ClaimStatus;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,7 @@ public class DashboardController {
 
     private final ClientRepository clientRepository;
     private final PolicyRepository policyRepository;
-    private final ClaimRepository claimRepository;
+    private final HealthcareProviderClaimRepository claimRepository;
 
     @GetMapping("/manager/stats")
     @PreAuthorize("hasRole('INSURANCE_MANAGER')")
@@ -29,7 +29,11 @@ public class DashboardController {
         Map<String, Object> stats = new HashMap<>();
         stats.put("totalClients", clientRepository.count());
         stats.put("totalPolicies", policyRepository.count());
-        stats.put("pendingClaims", claimRepository.countByStatus(ClaimStatus.PENDING));
+        stats.put(
+                "pendingClaims",
+                claimRepository.countByStatus(ClaimStatus.PENDING_MEDICAL)
+                        + claimRepository.countByStatus(ClaimStatus.RETURNED_FOR_REVIEW)
+        );
         return ResponseEntity.ok(stats);
     }
 }

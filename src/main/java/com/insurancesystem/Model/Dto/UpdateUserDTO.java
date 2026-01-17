@@ -1,8 +1,12 @@
 package com.insurancesystem.Model.Dto;
 
+import com.insurancesystem.Model.Entity.DoctorSpecializationEntity;
 import com.insurancesystem.Model.Entity.Enums.MemberStatus;
 import jakarta.validation.constraints.*;
 import lombok.*;
+
+import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @Builder
@@ -19,10 +23,12 @@ public class UpdateUserDTO {
 
     @Size(max = 40)
     private String phone;
+    private String gender;
+    private LocalDate dateOfBirth;
+    private String nationalId;
 
     private MemberStatus status; // للأدمن فقط
-    private String universityCardImage;
-
+    List<String> universityCardImages;
     // 🟢 الحقول الجديدة (ضرورية لتطابق ClientMapper)
     private String employeeId;
     private String department;
@@ -35,4 +41,5 @@ public class UpdateUserDTO {
     private String labCode;
     private String labName;
     private String labLocation;
+    private DoctorSpecializationEntity doctorSpecialization;
 }
