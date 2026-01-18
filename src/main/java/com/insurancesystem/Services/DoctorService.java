@@ -7,7 +7,7 @@ import com.insurancesystem.Model.Entity.Client;
 import com.insurancesystem.Model.MapStruct.ClientMapper;
 import com.insurancesystem.Repository.ClientRepository;
 import com.insurancesystem.Repository.LabRequestRepository;
-import com.insurancesystem.Repository.DocotrRepository;
+import com.insurancesystem.Repository.MedicalRecordRepository;
 import com.insurancesystem.Repository.PrescriptionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,11 +25,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class DoctorService {
 
-    private final DocotrRepository recordRepo;
+    private final MedicalRecordRepository medicalRecordRepository;
     private final ClientRepository clientRepo;
 
-    private final PrescriptionRepository prrepo;
-    private final LabRequestRepository labrepo;
+    private final PrescriptionRepository prescriptionRepository;
+    private final LabRequestRepository labRequestRepository;
     private final ClientMapper clientMapper;
 
 
@@ -81,9 +81,9 @@ public class DoctorService {
                 .orElseThrow(() -> new NotFoundException("Doctor not found"));
 
 
-        long prescriptionsCount = prrepo.countByDoctorId(doctor.getId());
-        long labRequestsCount = labrepo.countByDoctorId(doctor.getId());
-        long medicalRecordsCount = recordRepo.countByDoctorId(doctor.getId());
+        long prescriptionsCount = prescriptionRepository.countByDoctorId(doctor.getId());
+        long labRequestsCount = labRequestRepository.countByDoctorId(doctor.getId());
+        long medicalRecordsCount = medicalRecordRepository.countByDoctorId(doctor.getId());
 
         long total = prescriptionsCount + labRequestsCount + medicalRecordsCount;
 

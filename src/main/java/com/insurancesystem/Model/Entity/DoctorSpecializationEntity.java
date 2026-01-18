@@ -61,6 +61,6 @@ public class DoctorSpecializationEntity {
      * If "MALE", only male patients can be treated
      * If "FEMALE", only female patients can be treated
      */
-    @Column(name = "gender")
+    @Column(name = "gender_restriction")
     private String gender;
 }

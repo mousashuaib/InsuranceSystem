@@ -70,13 +70,15 @@ public class PolicyController {
 
     @PreAuthorize("hasRole('INSURANCE_MANAGER')")
     @DeleteMapping("/delete/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    public ResponseEntity<java.util.Map<String, Object>> delete(@PathVariable UUID id) {
         policyService.delete(id);
 
         // 🔔 إشعار
 
-
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(java.util.Map.of(
+            "success", true,
+            "message", "Policy deleted successfully"
+        ));
     }
 
     @PreAuthorize("hasRole('INSURANCE_CLIENT')")
@@ -114,5 +116,59 @@ public class PolicyController {
     @GetMapping("/all_Client")
     public ResponseEntity<List<PolicyDTO>> listClient() {
         return ResponseEntity.ok(policyService.list());
+    }
+
+    // ===================== Bulk Operations =====================
+
+    /**
+     * Bulk delete multiple policies
+     */
+    @PreAuthorize("hasRole('INSURANCE_MANAGER')")
+    @PostMapping("/bulk-delete")
+    public ResponseEntity<java.util.Map<String, Object>> bulkDelete(
+            @RequestBody java.util.Map<String, Object> request
+    ) {
+        try {
+            @SuppressWarnings("unchecked")
+            java.util.List<String> policyIds = (java.util.List<String>) request.get("policyIds");
+
+            if (policyIds == null || policyIds.isEmpty()) {
+                return ResponseEntity.badRequest().body(java.util.Map.of(
+                        "success", false,
+                        "error", "No policies selected"
+                ));
+            }
+
+            int deleted = 0;
+            java.util.List<String> errors = new java.util.ArrayList<>();
+
+            for (String idStr : policyIds) {
+                try {
+                    UUID id = UUID.fromString(idStr);
+                    policyService.delete(id);
+                    deleted++;
+                } catch (Exception e) {
+                    errors.add("Policy " + idStr + ": " + e.getMessage());
+                }
+            }
+
+            if (errors.isEmpty()) {
+                return ResponseEntity.ok(java.util.Map.of(
+                        "success", true,
+                        "message", deleted + " policies deleted successfully"
+                ));
+            } else {
+                return ResponseEntity.ok(java.util.Map.of(
+                        "success", true,
+                        "message", deleted + " policies deleted, " + errors.size() + " failed",
+                        "errors", errors
+                ));
+            }
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                    "success", false,
+                    "error", e.getMessage()
+            ));
+        }
     }
 }

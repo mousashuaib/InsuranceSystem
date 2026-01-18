@@ -5,7 +5,6 @@ import com.insurancesystem.Model.Dto.CreateNotificationManualDTO;
 import com.insurancesystem.Model.Dto.NotificationDTO;
 import com.insurancesystem.Model.Dto.RecipientDto;
 import com.insurancesystem.Model.Entity.Client;
-import com.insurancesystem.Model.Entity.Enums.RoleName;
 import com.insurancesystem.Repository.ClientRepository;
 import com.insurancesystem.Services.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -93,7 +92,7 @@ public class NotificationController {
 
 
     @GetMapping("/unread-count/emergency")
-    @PreAuthorize("hasRole('EMERGENCY_MANAGER')")
+    @PreAuthorize("hasAnyRole('MEDICAL_ADMIN', 'INSURANCE_MANAGER')")
     public long getUnreadEmergencyCount(Authentication auth) {
         String senderEmail = auth.getName().toLowerCase();
         Client user = clientRepo.findByEmail(senderEmail)
@@ -140,6 +139,68 @@ public class NotificationController {
         return "User: " + auth.getName() + " | Authorities: " + auth.getAuthorities();
     }
 
+    // TEMPORARY DEBUG ENDPOINT - Remove in production
+    @GetMapping("/debug/all-users")
+    public List<java.util.Map<String, Object>> getAllUsersDebug() {
+        return clientRepo.findAllUsersNative().stream()
+                .map(row -> {
+                    java.util.Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("id", row[0]);
+                    map.put("fullName", row[1]);
+                    map.put("email", row[2]);
+                    map.put("employeeId", row[3]);
+                    return map;
+                })
+                .toList();
+    }
+
+    // TEMPORARY DEBUG ENDPOINT - Remove in production
+    @GetMapping("/debug/insurance-clients")
+    public List<java.util.Map<String, Object>> getInsuranceClientsDebug() {
+        return clientRepo.findAllInsuranceClientsNative().stream()
+                .map(row -> {
+                    java.util.Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("id", row[0]);
+                    map.put("fullName", row[1]);
+                    map.put("email", row[2]);
+                    map.put("employeeId", row[3]);
+                    map.put("role", row[4]);
+                    return map;
+                })
+                .toList();
+    }
+
+    // TEMPORARY DEBUG ENDPOINT - Fix duplicate employee ID
+    @org.springframework.transaction.annotation.Transactional
+    @PatchMapping("/debug/fix-employee-id/{clientId}")
+    public ResponseEntity<String> fixEmployeeId(@PathVariable UUID clientId, @RequestParam String newEmployeeId) {
+        clientRepo.updateEmployeeId(clientId, newEmployeeId);
+        return ResponseEntity.ok("Employee ID updated to: " + newEmployeeId);
+    }
+
+    // TEMPORARY DEBUG ENDPOINT - Get all users with roles
+    @GetMapping("/debug/users-with-roles")
+    public List<java.util.Map<String, Object>> getUsersWithRolesDebug() {
+        return clientRepo.findAllUsersWithRolesNative().stream()
+                .map(row -> {
+                    java.util.Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("id", row[0]);
+                    map.put("fullName", row[1]);
+                    map.put("email", row[2]);
+                    map.put("role", row[3]);
+                    return map;
+                })
+                .toList();
+    }
+
+    // TEMPORARY DEBUG ENDPOINT - Add role to client
+    @org.springframework.transaction.annotation.Transactional
+    @PostMapping("/debug/add-role/{clientId}")
+    public ResponseEntity<String> addRoleToClient(@PathVariable UUID clientId, @RequestParam String roleName) {
+        clientRepo.addRoleToClient(clientId, roleName);
+        return ResponseEntity.ok("Role " + roleName + " added to client " + clientId);
+    }
+
     @PostMapping("/by-fullname")
     @PreAuthorize("isAuthenticated()")
     public void sendByFullName(@RequestBody CreateNotificationManualDTO dto, Authentication auth) {
@@ -158,12 +219,9 @@ public class NotificationController {
     @GetMapping("/recipients")
     @PreAuthorize("isAuthenticated()")
     public List<RecipientDto> getRecipients() {
-        return clientRepo.findAll().stream()
-                // 🔹 استبعاد العملاء فقط
-                .filter(c -> c.getRoles().stream()
-                        .noneMatch(r -> r.getName() == RoleName.INSURANCE_CLIENT))
-                // 🔹 تحويلهم إلى DTO (id + fullName)
-                .map(c -> new RecipientDto(c.getId(), c.getFullName()))
+        // Use native query to avoid loading roles collection which may have invalid enum values (e.g., removed EMERGENCY_MANAGER)
+        return clientRepo.findAllRecipientsNative().stream()
+                .map(row -> new RecipientDto((UUID) row[0], (String) row[1]))
                 .toList();
     }
 

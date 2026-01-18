@@ -15,7 +15,7 @@ public class MembersActivityReportService {
     private final PrescriptionRepository prescriptionRepo;
     private final LabRequestRepository labRepo;
     private final EmergencyRequestRepository emergencyRepo;
-    private final DocotrRepository recordRepo;
+    private final MedicalRecordRepository medicalRecordRepository;
 
     public MembersActivityReportDto generateReport() {
         long totalMembers = clientRepo.count();
@@ -40,7 +40,7 @@ public class MembersActivityReportService {
                 .distinct()
                 .count();
 
-        long membersWithMedicalRecords = recordRepo.findAll().stream()
+        long membersWithMedicalRecords = medicalRecordRepository.findAll().stream()
                 .map(r -> r.getMember().getId())
                 .distinct()
                 .count();

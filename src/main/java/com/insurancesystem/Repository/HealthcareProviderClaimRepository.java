@@ -42,14 +42,35 @@ public interface HealthcareProviderClaimRepository extends JpaRepository<Healthc
     long countByStatus(ClaimStatus status);
 
     @Query("""
-    SELECT c.healthcareProvider.fullName AS providerName,
-           SUM(c.amount) AS totalAmount
+    SELECT c.healthcareProvider.id AS providerId,
+           c.healthcareProvider.fullName AS providerName,
+           SUM(c.amount) AS totalAmount,
+           c.healthcareProvider.requestedRole AS providerType,
+           COUNT(c) AS claimCount
     FROM HealthcareProviderClaim c
     WHERE c.status = com.insurancesystem.Model.Entity.Enums.ClaimStatus.APPROVED_FINAL
-    GROUP BY c.healthcareProvider.fullName
+    AND c.healthcareProvider.requestedRole IN (com.insurancesystem.Model.Entity.Enums.RoleName.DOCTOR,
+                   com.insurancesystem.Model.Entity.Enums.RoleName.PHARMACIST,
+                   com.insurancesystem.Model.Entity.Enums.RoleName.LAB_TECH,
+                   com.insurancesystem.Model.Entity.Enums.RoleName.RADIOLOGIST)
+    GROUP BY c.healthcareProvider.id, c.healthcareProvider.fullName, c.healthcareProvider.requestedRole
     ORDER BY totalAmount DESC
 """)
     List<Object[]> findTopProviders();
+
+    @Query("""
+    SELECT c FROM HealthcareProviderClaim c
+    WHERE c.healthcareProvider.id = :providerId
+    AND c.status = com.insurancesystem.Model.Entity.Enums.ClaimStatus.APPROVED_FINAL
+    AND (:fromDate IS NULL OR c.serviceDate >= :fromDate)
+    AND (:toDate IS NULL OR c.serviceDate <= :toDate)
+    ORDER BY c.serviceDate DESC
+""")
+    List<HealthcareProviderClaim> findProviderExpenses(
+            @Param("providerId") UUID providerId,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate
+    );
 
 
 
@@ -64,18 +85,6 @@ public interface HealthcareProviderClaimRepository extends JpaRepository<Healthc
     @Query("SELECT COALESCE(SUM(c.amount),0) FROM HealthcareProviderClaim c WHERE c.status = :status")
     double sumAmountByStatus(@Param("status") ClaimStatus status);
 
-<<<<<<< HEAD
-    // Find claims by multiple statuses (for medical review - PENDING + RETURNED_FOR_REVIEW)
-    List<HealthcareProviderClaim> findByStatusIn(List<ClaimStatus> statuses);
-
-    // Find claims for coordination review (APPROVED_MEDICAL or APPROVED_BY_MEDICAL)
-    @Query("SELECT c FROM HealthcareProviderClaim c WHERE c.status IN (com.insurancesystem.Model.Entity.Enums.ClaimStatus.APPROVED_MEDICAL, com.insurancesystem.Model.Entity.Enums.ClaimStatus.APPROVED_BY_MEDICAL, com.insurancesystem.Model.Entity.Enums.ClaimStatus.AWAITING_COORDINATION_REVIEW)")
-    List<HealthcareProviderClaim> findClaimsForCoordinationReview();
-
-    // Find final decisions (APPROVED or REJECTED)
-    @Query("SELECT c FROM HealthcareProviderClaim c WHERE c.status IN (com.insurancesystem.Model.Entity.Enums.ClaimStatus.APPROVED, com.insurancesystem.Model.Entity.Enums.ClaimStatus.APPROVED_FINAL, com.insurancesystem.Model.Entity.Enums.ClaimStatus.REJECTED, com.insurancesystem.Model.Entity.Enums.ClaimStatus.REJECTED_FINAL)")
-    List<HealthcareProviderClaim> findFinalDecisions();
-=======
     List<HealthcareProviderClaim> findByStatusIn(List<ClaimStatus> statuses);
     
     @Query("""
@@ -116,8 +125,18 @@ AND (:to IS NULL OR c.serviceDate <= :to)
     );
     List<HealthcareProviderClaim> findByClientId(UUID clientId);
 
+    @Query("SELECT COUNT(c) > 0 FROM HealthcareProviderClaim c " +
+           "JOIN c.healthcareProvider hp " +
+           "JOIN SearchProfile sp ON sp.owner.id = hp.id " +
+           "WHERE c.clientId = :clientId " +
+           "AND sp.owner.specialization = :specialization " +
+           "AND c.serviceDate > :sinceDate " +
+           "AND c.status NOT IN (com.insurancesystem.Model.Entity.Enums.ClaimStatus.REJECTED_FINAL, " +
+           "com.insurancesystem.Model.Entity.Enums.ClaimStatus.RETURNED_TO_PROVIDER)")
+    boolean existsByClientIdAndSpecializationAndServiceDateAfter(
+        @Param("clientId") UUID clientId,
+        @Param("specialization") String specialization,
+        @Param("sinceDate") LocalDate sinceDate);
 
-
->>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8
 }
 

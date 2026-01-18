@@ -29,6 +29,7 @@ public class FamilyMemberDTO {
     private String clientFullName;
     private UUID clientId;
     private String clientNationalId;
+    private String clientEmployeeId;
     private MemberStatus clientStatus;
 
 

@@ -45,7 +45,21 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(out);
     }
 
-    @PreAuthorize("hasRole('INSURANCE_MANAGER')")
+    // Simple JSON-based registration for testing/API clients without file uploads
+    @PostMapping(value = "/register-simple", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<RegisterResponse> registerSimple(@RequestBody String reqJson) {
+        var out = authService.register(
+                reqJson,
+                null,
+                null,
+                null,
+                null,
+                false
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(out);
+    }
+
+    @PreAuthorize("hasAuthority('ROLE_INSURANCE_MANAGER')")
     @PostMapping(value = "/admin/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<RegisterResponse> registerByAdmin(
             @RequestPart("data") String reqJson,
@@ -134,6 +148,24 @@ public class AuthController {
 
         authService.verifyEmail(req.getEmail(), req.getCode());
         return ResponseEntity.ok("Email verified successfully");
+    }
+
+    // DEBUG: Check what authorities are being loaded for the current user
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/debug/authorities")
+    public ResponseEntity<?> debugAuthorities() {
+        var auth = org.springframework.security.core.context.SecurityContextHolder
+                .getContext().getAuthentication();
+
+        java.util.Map<String, Object> debug = new java.util.HashMap<>();
+        debug.put("principal", auth.getName());
+        debug.put("authorities", auth.getAuthorities().stream()
+                .map(a -> a.getAuthority())
+                .toList());
+        debug.put("authenticated", auth.isAuthenticated());
+        debug.put("details", auth.getDetails() != null ? auth.getDetails().toString() : null);
+
+        return ResponseEntity.ok(debug);
     }
 
 }

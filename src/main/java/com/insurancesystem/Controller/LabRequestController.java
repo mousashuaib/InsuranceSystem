@@ -114,5 +114,12 @@ public class LabRequestController {
         return labService.getAllLabTechs();
     }
 
+    // 📖 Get available lab tests for doctors
+    @GetMapping("/available-tests")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public List<com.insurancesystem.Model.Dto.PriceListResponseDTO> getAvailableLabTests() {
+        return labService.getAvailableLabTests();
+    }
+
 }
 

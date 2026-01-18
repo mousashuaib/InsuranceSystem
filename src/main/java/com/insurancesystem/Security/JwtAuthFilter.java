@@ -96,26 +96,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
 
-<<<<<<< HEAD
-        // Only skip public auth endpoints - NOT /me or /logout which require authentication
-        return path.equals("/api/auth/login")
-            || path.equals("/api/auth/register")
-            || path.equals("/api/auth/forgot-password")
-            || path.equals("/api/auth/reset-password")
-            || path.equals("/api/auth/verify-email")
-            || path.startsWith("/api/doctor-specializations/")
-            || path.startsWith("/api/policies/public/")
-            || path.startsWith("/uploads/")
-            || path.startsWith("/ws-chat/");
-=======
-        // ✅ استثنِ فقط endpoints العامة
+        // ✅ استثنِ فقط endpoints العامة (but NOT /api/auth/me which requires authentication)
         return path.equals("/api/auth/login")
                 || path.equals("/api/auth/register")
                 || path.equals("/api/auth/forgot-password")
                 || path.equals("/api/auth/reset-password")
+                || path.equals("/api/auth/verify-email")
+                || path.startsWith("/api/migration/")
+                || path.startsWith("/api/database/")
                 || path.startsWith("/uploads/")
-                || path.startsWith("/ws-chat/");
->>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8
+                || path.startsWith("/ws-chat/")
+                || path.equals("/api/doctor-specializations");
     }
 
 

@@ -20,7 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -100,6 +103,9 @@ public class ClientServices {
     public List<ClientDto> listUsersWithPendingRole() {
         return clientRepo.findAll().stream()
                 .filter(u -> u.getRoleRequestStatus() == RoleRequestStatus.PENDING)
+                // Only include new registrations (users with no existing roles)
+                // Exclude existing clients who somehow have PENDING status (role change not allowed)
+                .filter(u -> u.getRoles() == null || u.getRoles().isEmpty())
                 .map(clientMapper::toDTO)
                 .toList();
     }
@@ -369,6 +375,67 @@ public class ClientServices {
         }
 
         clientRepo.save(client);
+    }
+
+    // ============= HEALTHCARE PROVIDERS METHODS =============
+
+    /**
+     * Get clients by specific role
+     * Includes both clients with assigned roles and those with approved requestedRole
+     */
+    @Transactional(readOnly = true)
+    public List<ClientDto> getClientsByRole(RoleName roleName) {
+        return clientRepo.findByRoleOrRequestedRole(roleName).stream()
+                .map(clientMapper::toDTO)
+                .toList();
+    }
+
+    /**
+     * Get all healthcare providers (DOCTOR, PHARMACIST, LAB_TECH, RADIOLOGIST)
+     * Includes both clients with assigned roles and those with approved requestedRole
+     */
+    @Transactional(readOnly = true)
+    public List<ClientDto> getAllHealthcareProviders() {
+        List<RoleName> healthcareRoles = List.of(
+                RoleName.DOCTOR,
+                RoleName.PHARMACIST,
+                RoleName.LAB_TECH,
+                RoleName.RADIOLOGIST
+        );
+
+        return clientRepo.findAllHealthcareProviders(healthcareRoles).stream()
+                .map(clientMapper::toDTO)
+                .toList();
+    }
+
+    /**
+     * Bulk assign policy to multiple providers
+     * @param providerIds List of provider UUIDs
+     * @param policyId Policy UUID (null to remove policy)
+     * @return Number of updated providers
+     */
+    @Transactional
+    public int bulkAssignPolicy(List<UUID> providerIds, UUID policyId) {
+        int count = 0;
+
+        for (UUID providerId : providerIds) {
+            Client provider = clientRepo.findById(providerId)
+                    .orElse(null);
+
+            if (provider != null) {
+                if (policyId != null) {
+                    policyService.assignPolicyToClient(providerId, policyId);
+                } else {
+                    // Remove policy assignment
+                    provider.setPolicy(null);
+                    provider.setUpdatedAt(Instant.now());
+                    clientRepo.save(provider);
+                }
+                count++;
+            }
+        }
+
+        return count;
     }
 
 }

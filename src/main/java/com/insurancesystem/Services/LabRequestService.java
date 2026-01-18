@@ -12,6 +12,7 @@ import com.insurancesystem.Model.Entity.LabRequest;
 import com.insurancesystem.Model.Entity.PriceList;
 import com.insurancesystem.Model.MapStruct.ClientMapper;
 import com.insurancesystem.Model.MapStruct.LabRequestMapper;
+import com.insurancesystem.Model.MapStruct.PriceListMapper;
 import com.insurancesystem.Repository.ClientRepository;
 import com.insurancesystem.Repository.FamilyMemberRepository;
 import com.insurancesystem.Repository.LabRequestRepository;
@@ -44,6 +45,7 @@ public class LabRequestService {
     private final ClientMapper clientMapper;
     private final NotificationService notificationService;
     private final PriceListRepository priceListRepository;
+    private final PriceListMapper priceListMapper;
 
     // ➕ Doctor ينشئ طلب فحص
     @Transactional
@@ -576,6 +578,15 @@ public class LabRequestService {
         return clientRepo.findByRoles_Name(RoleName.LAB_TECH)
                 .stream()
                 .map(clientMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    // 📖 Get available lab tests for doctors (from price list with type LAB)
+    public List<com.insurancesystem.Model.Dto.PriceListResponseDTO> getAvailableLabTests() {
+        return priceListRepository.findByProviderType(com.insurancesystem.Model.Entity.Enums.ProviderType.LAB)
+                .stream()
+                .filter(PriceList::isActive)
+                .map(priceListMapper::toDto)
                 .collect(Collectors.toList());
     }
 }

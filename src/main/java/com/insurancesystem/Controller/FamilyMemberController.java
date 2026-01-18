@@ -72,21 +72,22 @@ public class FamilyMemberController {
         return familyService.updateStatus(memberId, dto.getStatus());
     }
 
-    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN','MEDICAL_ADMIN')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','COORDINATION_ADMIN','MEDICAL_ADMIN')")
     @GetMapping("/pending")
     public ResponseEntity<List<FamilyMemberDTO>> getPendingFamilyMembers() {
         return ResponseEntity.ok(
                 familyService.getPendingFamilyMembers()
         );
     }
-    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN','MEDICAL_ADMIN')")
+
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','COORDINATION_ADMIN','MEDICAL_ADMIN')")
     @PatchMapping("/{id}/approve")
     public ResponseEntity<Void> approveFamilyMember(@PathVariable UUID id) {
         familyService.approve(id);
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN','MEDICAL_ADMIN')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','COORDINATION_ADMIN','MEDICAL_ADMIN')")
     @PatchMapping("/{id}/reject")
     public ResponseEntity<Void> rejectFamilyMember(
             @PathVariable UUID id,

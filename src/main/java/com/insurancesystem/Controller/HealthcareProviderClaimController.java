@@ -2,6 +2,7 @@ package com.insurancesystem.Controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.insurancesystem.Exception.BadRequestException;
 import com.insurancesystem.Exception.NotFoundException;
 
 import com.insurancesystem.Model.Dto.*;
@@ -44,8 +45,6 @@ import java.util.*;
 @RequestMapping("/api/healthcare-provider-claims")
 
 @RequiredArgsConstructor
-
-@CrossOrigin(origins = "*")
 
 public class HealthcareProviderClaimController {
 
@@ -232,7 +231,7 @@ public class HealthcareProviderClaimController {
 
     // ============================================================
 
-    @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_COORDINATION_ADMIN', 'ROLE_INSURANCE_MANAGER')")
 
     @GetMapping("/all")
 
@@ -279,7 +278,7 @@ public class HealthcareProviderClaimController {
 
     // ============================================================
 
-    @PreAuthorize("hasAuthority('ROLE_MEDICAL_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_MEDICAL_ADMIN', 'ROLE_INSURANCE_MANAGER')")
 
     @GetMapping("/medical-review")
 
@@ -290,7 +289,7 @@ public class HealthcareProviderClaimController {
     }
 
 
-    @PreAuthorize("hasAnyAuthority('ROLE_MEDICAL_ADMIN','ROLE_COORDINATION_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_MEDICAL_ADMIN', 'ROLE_COORDINATION_ADMIN', 'ROLE_INSURANCE_MANAGER')")
     @GetMapping("/final-decisions")
     public ResponseEntity<?> finalDecisions() {
 
@@ -304,7 +303,7 @@ public class HealthcareProviderClaimController {
 
     // ============================================================
 
-    @PreAuthorize("hasAuthority('ROLE_MEDICAL_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_MEDICAL_ADMIN', 'ROLE_INSURANCE_MANAGER')")
 
     @PatchMapping("/{id}/approve-medical")
 
@@ -322,6 +321,10 @@ public class HealthcareProviderClaimController {
 
             return ResponseEntity.status(404).body(Map.of("message", e.getMessage()));
 
+        } catch (BadRequestException e) {
+
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+
         }
 
     }
@@ -332,7 +335,7 @@ public class HealthcareProviderClaimController {
 
     // ============================================================
 
-    @PreAuthorize("hasAuthority('ROLE_MEDICAL_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_MEDICAL_ADMIN', 'ROLE_INSURANCE_MANAGER')")
 
     @PatchMapping("/{id}/reject-medical")
 
@@ -345,6 +348,10 @@ public class HealthcareProviderClaimController {
             Authentication auth) {
 
         try {
+            // Validate rejection reason is provided
+            if (dto.getReason() == null || dto.getReason().trim().isEmpty()) {
+                return ResponseEntity.status(400).body(Map.of("message", "Rejection reason is required"));
+            }
 
             Client reviewer = clientRepo.findByEmail(auth.getName().toLowerCase())
                     .orElseThrow(() -> new NotFoundException("Reviewer not found"));
@@ -356,108 +363,14 @@ public class HealthcareProviderClaimController {
 
             return ResponseEntity.status(404).body(Map.of("message", e.getMessage()));
 
+        } catch (BadRequestException e) {
+
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+
         }
 
     }
 
-<<<<<<< HEAD
-    // ===== NEW ENDPOINTS FOR MEDICAL REVIEW WORKFLOW =====
-
-    // ✅ جلب المطالبات لمراجعة طبية (PENDING + RETURNED_FOR_REVIEW)
-    @PreAuthorize("hasAnyRole('MEDICAL_ADMIN', 'INSURANCE_MANAGER')")
-    @GetMapping("/medical-review")
-    public ResponseEntity<List<HealthcareProviderClaimDTO>> getClaimsForMedicalReview() {
-        return ResponseEntity.ok(claimService.getClaimsForMedicalReview());
-    }
-
-    // ✅ جلب المطالبات لمراجعة التنسيق (APPROVED_MEDICAL)
-    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN', 'INSURANCE_MANAGER')")
-    @GetMapping("/coordination-review")
-    public ResponseEntity<List<HealthcareProviderClaimDTO>> getClaimsForCoordinationReview() {
-        return ResponseEntity.ok(claimService.getClaimsForCoordinationReview());
-    }
-
-    // ✅ جلب القرارات النهائية
-    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN', 'MEDICAL_ADMIN', 'INSURANCE_MANAGER')")
-    @GetMapping("/final-decisions")
-    public ResponseEntity<List<HealthcareProviderClaimDTO>> getFinalDecisions() {
-        return ResponseEntity.ok(claimService.getFinalDecisions());
-    }
-
-    // ✅ موافقة طبية على المطالبة
-    @PreAuthorize("hasAnyRole('MEDICAL_ADMIN', 'INSURANCE_MANAGER')")
-    @PatchMapping("/{id}/approve-medical")
-    public ResponseEntity<HealthcareProviderClaimDTO> approveMedical(@PathVariable UUID id) {
-        try {
-            return ResponseEntity.ok(claimService.approveMedical(id));
-        } catch (NotFoundException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("message", e.getMessage());
-            return ResponseEntity.status(404).body(null);
-        }
-    }
-
-    // ✅ رفض طبي للمطالبة
-    @PreAuthorize("hasAnyRole('MEDICAL_ADMIN', 'INSURANCE_MANAGER')")
-    @PatchMapping("/{id}/reject-medical")
-    public ResponseEntity<HealthcareProviderClaimDTO> rejectMedical(
-            @PathVariable UUID id,
-            @RequestBody RejectClaimDTO dto
-    ) {
-        try {
-            return ResponseEntity.ok(claimService.rejectMedical(id, dto.getReason()));
-        } catch (NotFoundException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("message", e.getMessage());
-            return ResponseEntity.status(404).body(null);
-        }
-    }
-
-    // ✅ موافقة نهائية (تنسيق)
-    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN', 'INSURANCE_MANAGER')")
-    @PatchMapping("/{id}/approve-final")
-    public ResponseEntity<HealthcareProviderClaimDTO> approveFinal(@PathVariable UUID id) {
-        try {
-            return ResponseEntity.ok(claimService.approveFinal(id));
-        } catch (NotFoundException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("message", e.getMessage());
-            return ResponseEntity.status(404).body(null);
-        }
-    }
-
-    // ✅ رفض نهائي (تنسيق)
-    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN', 'INSURANCE_MANAGER')")
-    @PatchMapping("/{id}/reject-final")
-    public ResponseEntity<HealthcareProviderClaimDTO> rejectFinal(
-            @PathVariable UUID id,
-            @RequestBody RejectClaimDTO dto
-    ) {
-        try {
-            return ResponseEntity.ok(claimService.rejectFinal(id, dto.getReason()));
-        } catch (NotFoundException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("message", e.getMessage());
-            return ResponseEntity.status(404).body(null);
-        }
-    }
-
-    // ✅ إرجاع للمراجعة الطبية
-    @PreAuthorize("hasAnyRole('COORDINATION_ADMIN', 'INSURANCE_MANAGER')")
-    @PatchMapping("/{id}/return-to-medical")
-    public ResponseEntity<HealthcareProviderClaimDTO> returnToMedical(
-            @PathVariable UUID id,
-            @RequestBody RejectClaimDTO dto
-    ) {
-        try {
-            return ResponseEntity.ok(claimService.returnToMedical(id, dto.getReason()));
-        } catch (NotFoundException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("message", e.getMessage());
-            return ResponseEntity.status(404).body(null);
-        }
-    }
-=======
     @PreAuthorize("hasAnyAuthority('ROLE_COORDINATION_ADMIN','ROLE_INSURANCE_MANAGER')")
     @GetMapping(value = "/reports/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> exportReportsPdf(
@@ -491,7 +404,7 @@ public class HealthcareProviderClaimController {
     }
 
 
-    @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_COORDINATION_ADMIN', 'ROLE_INSURANCE_MANAGER')")
     @PostMapping(value = "/admin/create-direct", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createClaimByAdmin(
             Authentication auth,
@@ -499,21 +412,30 @@ public class HealthcareProviderClaimController {
             @RequestPart(value = "document", required = false) MultipartFile document
     ) throws IOException {
 
-        Client admin = clientRepo.findByEmail(auth.getName().toLowerCase())
-                .orElseThrow(() -> new NotFoundException("Admin not found"));
+        try {
+            Client admin = clientRepo.findByEmail(auth.getName().toLowerCase())
+                    .orElseThrow(() -> new NotFoundException("Admin not found"));
 
-        CreateHealthcareProviderClaimDTO dto =
-                objectMapper.readValue(json, CreateHealthcareProviderClaimDTO.class);
+            CreateHealthcareProviderClaimDTO dto =
+                    objectMapper.readValue(json, CreateHealthcareProviderClaimDTO.class);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(claimService.createClaimByCoordinationAdmin(
-                        admin.getId(),
-                        dto,
-                        document
-                ));
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(claimService.createClaimByCoordinationAdmin(
+                            admin.getId(),
+                            dto,
+                            document
+                    ));
+        } catch (NotFoundException e) {
+            return ResponseEntity.status(404).body(Map.of("message", e.getMessage()));
+        } catch (BadRequestException e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(400)
+                    .body(Map.of("message", "Failed to create claim: " + e.getMessage()));
+        }
     }
 
-    @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_COORDINATION_ADMIN', 'ROLE_INSURANCE_MANAGER')")
     @PatchMapping("/{id}/return-to-medical")
     public ResponseEntity<?> returnToMedical(
             @PathVariable UUID id,
@@ -528,7 +450,7 @@ public class HealthcareProviderClaimController {
         );
     }
 
-    @PreAuthorize("hasAuthority('ROLE_COORDINATION_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_COORDINATION_ADMIN', 'ROLE_INSURANCE_MANAGER')")
     @GetMapping("/coordination-review")
     public ResponseEntity<?> coordinationReviewList() {
         return ResponseEntity.ok(
@@ -536,6 +458,108 @@ public class HealthcareProviderClaimController {
         );
     }
 
->>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8
+    // ============================================================
+
+    // Coordination Admin → Approve Final
+
+    // ============================================================
+
+    @PreAuthorize("hasAnyAuthority('ROLE_COORDINATION_ADMIN', 'ROLE_INSURANCE_MANAGER')")
+    @PatchMapping("/{id}/approve-final")
+    public ResponseEntity<?> approveFinal(@PathVariable UUID id, Authentication auth) {
+        try {
+            Client reviewer = clientRepo.findByEmail(auth.getName().toLowerCase())
+                    .orElseThrow(() -> new NotFoundException("Reviewer not found"));
+
+            HealthcareProviderClaimDTO result = claimService.approveAdmin(id, reviewer.getId());
+            return ResponseEntity.ok(result);
+        } catch (NotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    // ============================================================
+
+    // Coordination Admin → Reject Final
+
+    // ============================================================
+
+    @PreAuthorize("hasAnyAuthority('ROLE_COORDINATION_ADMIN', 'ROLE_INSURANCE_MANAGER')")
+    @PatchMapping("/{id}/reject-final")
+    public ResponseEntity<?> rejectFinal(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        try {
+            String reason = body.getOrDefault("reason", "No reason provided");
+            Client reviewer = clientRepo.findByEmail(auth.getName().toLowerCase())
+                    .orElseThrow(() -> new NotFoundException("Reviewer not found"));
+
+            HealthcareProviderClaimDTO result = claimService.rejectAdmin(id, reason, reviewer.getId());
+            return ResponseEntity.ok(result);
+        } catch (NotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    // ============================================================
+
+    // Return Claim to Provider for Corrections
+
+    // ============================================================
+
+    @PreAuthorize("hasAnyAuthority('ROLE_MEDICAL_ADMIN', 'ROLE_COORDINATION_ADMIN', 'ROLE_INSURANCE_MANAGER')")
+    @PatchMapping("/{id}/return-to-provider")
+    public ResponseEntity<?> returnToProvider(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        try {
+            String reason = body.getOrDefault("reason", "Corrections needed");
+            Client reviewer = clientRepo.findByEmail(auth.getName().toLowerCase())
+                    .orElseThrow(() -> new NotFoundException("Reviewer not found"));
+
+            return ResponseEntity.ok(claimService.returnToProvider(id, reason, reviewer.getId()));
+        } catch (NotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    // ============================================================
+
+    // Mark Claim as Paid
+
+    // ============================================================
+
+    @PreAuthorize("hasAnyAuthority('ROLE_INSURANCE_MANAGER', 'ROLE_COORDINATION_ADMIN')")
+    @PatchMapping("/{id}/mark-paid")
+    public ResponseEntity<?> markAsPaid(@PathVariable UUID id, Authentication auth) {
+        try {
+            Client admin = clientRepo.findByEmail(auth.getName().toLowerCase())
+                    .orElseThrow(() -> new NotFoundException("Admin not found"));
+
+            HealthcareProviderClaimDTO result = claimService.markAsPaid(id, admin.getId());
+            return ResponseEntity.ok(result);
+        } catch (NotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", e.getMessage()));
+        }
+    }
+
 }
 

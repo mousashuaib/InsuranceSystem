@@ -1,30 +1,19 @@
 package com.insurancesystem.Model.Entity.Enums;
 
 public enum ClaimStatus {
-<<<<<<< HEAD
-    PENDING, // بانتظار المراجعة الطبية
-    PENDING_MEDICAL, // New: Pending medical review
-    APPROVED_BY_MEDICAL, // تمت الموافقة الطبية
-    APPROVED_MEDICAL, // New: Approved by medical (alias for APPROVED_BY_MEDICAL)
-    REJECTED_BY_MEDICAL, // تم الرفض الطبي
-    REJECTED_MEDICAL, // New: Rejected by medical (alias for REJECTED_BY_MEDICAL)
-    AWAITING_ADMIN_REVIEW, // بانتظار المراجعة الإدارية
-    AWAITING_COORDINATION_REVIEW, // New: Awaiting coordination review
-    PENDING_COORDINATION, // New: Pending coordination review
-    APPROVED, // تمت الموافقة النهائية
-    APPROVED_FINAL, // New: Final approval (alias for APPROVED)
-    REJECTED, // الرفض الإداري النهائي
-    REJECTED_FINAL, // New: Final rejection (alias for REJECTED)
-    RETURNED_FOR_REVIEW, // New: Returned from coordinator for medical re-review
-    RETURNED_TO_PROVIDER, // New: Returned to provider
-    PAYMENT_PENDING, // New: Payment pending
-    PAID // New: Paid
-=======
-    PENDING_MEDICAL,   // أول مرة
-    AWAITING_COORDINATION_REVIEW,  // موافقة طبية - في انتظار مراجعة المنسق
-    APPROVED_FINAL,           // موافقة نهائية (بعد موافقة المنسق)
-    REJECTED_FINAL,           // رفض نهائي
-    RETURNED_FOR_REVIEW       // أُعيدت من المنسق للطبيب
+    // Legacy statuses (for backward compatibility with existing data)
+    PENDING,                  // Legacy: Initial submission
+    APPROVED,                 // Legacy: Final approval
+    REJECTED,                 // Legacy: Final rejection
+    APPROVED_BY_MEDICAL,      // Legacy: Approved by medical admin
 
->>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8
+    // New workflow statuses
+    PENDING_MEDICAL,          // New claims awaiting medical review
+    AWAITING_COORDINATION_REVIEW,  // Medical approved - awaiting coordination review
+    APPROVED_FINAL,           // Final approval (after coordination approval)
+    REJECTED_FINAL,           // Final rejection
+    RETURNED_FOR_REVIEW,      // Returned from coordinator to medical admin
+    RETURNED_TO_PROVIDER,     // Returned to provider for corrections
+    PAYMENT_PENDING,          // Approved - awaiting payment
+    PAID                      // Payment completed
 }

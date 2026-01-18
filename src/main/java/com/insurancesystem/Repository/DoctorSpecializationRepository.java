@@ -1,25 +1,11 @@
 package com.insurancesystem.Repository;
 
-<<<<<<< HEAD
-import com.insurancesystem.Model.Entity.DoctorSpecialization;
+import com.insurancesystem.Model.Entity.DoctorSpecializationEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
-
-@Repository
-public interface DoctorSpecializationRepository extends JpaRepository<DoctorSpecialization, Long> {
-
-    Optional<DoctorSpecialization> findByDisplayName(String displayName);
-
-    List<DoctorSpecialization> findAllByOrderByDisplayNameAsc();
-}
-=======
-import com.insurancesystem.Model.Entity.DoctorSpecializationEntity;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.util.Optional;
 
 @Repository
@@ -31,9 +17,24 @@ public interface DoctorSpecializationRepository extends JpaRepository<DoctorSpec
     Optional<DoctorSpecializationEntity> findByDisplayName(String displayName);
 
     /**
+     * Find specialization by display name (case insensitive)
+     */
+    Optional<DoctorSpecializationEntity> findByDisplayNameIgnoreCase(String displayName);
+
+    /**
+     * Check if specialization exists by display name (case insensitive)
+     */
+    boolean existsByDisplayNameIgnoreCase(String displayName);
+
+    /**
      * Find specialization by ID (inherited from JpaRepository)
      */
     // findById is already available from JpaRepository
+
+    /**
+     * Debug: Get raw specialization data with diagnoses
+     */
+    @Query(value = "SELECT id, display_name, diagnoses, treatment_plans FROM doctor_specialization", nativeQuery = true)
+    List<Object[]> findAllSpecializationsRaw();
 }
 
->>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8

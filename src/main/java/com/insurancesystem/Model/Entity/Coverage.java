@@ -1,6 +1,8 @@
 package com.insurancesystem.Model.Entity;
 
+import com.insurancesystem.Model.Entity.Enums.AllowedGender;
 import com.insurancesystem.Model.Entity.Enums.CoverageType;
+import com.insurancesystem.Model.Entity.Enums.FrequencyPeriod;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -72,4 +74,29 @@ public class Coverage {
     @Builder.Default
     @Column(name = "requires_referral", nullable = false)
     private boolean requiresReferral = false;
+
+    // ===========================
+    // ✔ Coverage Rules Fields (Phase 3)
+    // ===========================
+
+    // 4️⃣ Gender Restriction
+    @Enumerated(EnumType.STRING)
+    @Column(name = "allowed_gender")
+    @Builder.Default
+    private AllowedGender allowedGender = AllowedGender.ALL;
+
+    // 5️⃣ Age Restrictions
+    @Column(name = "min_age")
+    private Integer minAge;
+
+    @Column(name = "max_age")
+    private Integer maxAge;
+
+    // 6️⃣ Frequency Limits
+    @Column(name = "frequency_limit")
+    private Integer frequencyLimit;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "frequency_period")
+    private FrequencyPeriod frequencyPeriod;
 }

@@ -12,6 +12,7 @@ public interface FamilyMemberMapper {
     @Mapping(target = "clientId", source = "client.id")
     @Mapping(target = "documentImages", source = "documentImages")
     @Mapping(target = "clientNationalId", source = "client.nationalId")
+    @Mapping(target = "clientEmployeeId", source = "client.employeeId")
     @Mapping(target = "clientStatus", source = "client.status")
     FamilyMemberDTO toDto(FamilyMember entity);
 }

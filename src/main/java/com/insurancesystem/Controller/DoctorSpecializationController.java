@@ -1,14 +1,5 @@
 package com.insurancesystem.Controller;
 
-<<<<<<< HEAD
-import com.insurancesystem.Model.Entity.DoctorSpecialization;
-import com.insurancesystem.Repository.DoctorSpecializationRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-=======
 import com.insurancesystem.Model.Dto.DoctorSpecializationRequestDto;
 import com.insurancesystem.Model.Dto.DoctorSpecializationResponseDto;
 import com.insurancesystem.Model.Entity.DoctorSpecializationEntity;
@@ -22,52 +13,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 import java.util.stream.Collectors;
->>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8
 
 @RestController
 @RequestMapping("/api/doctor-specializations")
 @RequiredArgsConstructor
-<<<<<<< HEAD
-public class DoctorSpecializationController {
-
-    private final DoctorSpecializationRepository specializationRepository;
-
-    /**
-     * Get all specializations (public endpoint for registration)
-     */
-    @GetMapping
-    public ResponseEntity<List<DoctorSpecialization>> getAllSpecializations() {
-        List<DoctorSpecialization> specializations = specializationRepository.findAllByOrderByDisplayNameAsc();
-        return ResponseEntity.ok(specializations);
-    }
-
-    /**
-     * Get all specializations with details (for doctor dashboard)
-     */
-    @GetMapping("/with-details")
-    public ResponseEntity<List<DoctorSpecialization>> getSpecializationsWithDetails() {
-        List<DoctorSpecialization> specializations = specializationRepository.findAllByOrderByDisplayNameAsc();
-        return ResponseEntity.ok(specializations);
-    }
-
-    /**
-     * Get specialization by ID
-     */
-    @GetMapping("/{id}")
-    public ResponseEntity<DoctorSpecialization> getSpecializationById(@PathVariable Long id) {
-        return specializationRepository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    /**
-     * Get all specializations for manager
-     */
-    @GetMapping("/manager/all")
-    public ResponseEntity<List<DoctorSpecialization>> getAllForManager() {
-        List<DoctorSpecialization> specializations = specializationRepository.findAll();
-        return ResponseEntity.ok(specializations);
-=======
 @CrossOrigin(origins = "*")
 public class DoctorSpecializationController {
 
@@ -231,6 +180,99 @@ public class DoctorSpecializationController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(specMaps);
->>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8
+    }
+
+    /**
+     * Debug: Get raw specialization data to check diagnoses in database
+     */
+    @GetMapping("/debug/raw")
+    public ResponseEntity<List<Map<String, Object>>> getSpecializationsRaw() {
+        List<Object[]> raw = repository.findAllSpecializationsRaw();
+        List<Map<String, Object>> result = raw.stream()
+                .map(row -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", row[0]);
+                    map.put("displayName", row[1]);
+                    map.put("diagnoses", row[2]);
+                    map.put("treatmentPlans", row[3]);
+                    return map;
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Debug: Seed diagnoses and treatment plans for all specializations
+     */
+    @PostMapping("/debug/seed-data")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<String> seedDiagnosesAndTreatments() {
+        Map<String, List<String>> diagnosesMap = new HashMap<>();
+        Map<String, List<String>> treatmentsMap = new HashMap<>();
+
+        // General Practice
+        diagnosesMap.put("General Practice", Arrays.asList("Common Cold", "Flu", "Headache", "Fever", "Fatigue", "Allergies", "Minor Infections", "Back Pain"));
+        treatmentsMap.put("General Practice", Arrays.asList("Rest and Fluids", "Pain Relief", "Antibiotics", "Antihistamines", "Vitamin Supplements"));
+
+        // Cardiology
+        diagnosesMap.put("Cardiology", Arrays.asList("Hypertension", "Heart Failure", "Arrhythmia", "Coronary Artery Disease", "Angina", "Myocardial Infarction"));
+        treatmentsMap.put("Cardiology", Arrays.asList("Beta Blockers", "ACE Inhibitors", "Statins", "Anticoagulants", "Lifestyle Modification"));
+
+        // Pediatrics
+        diagnosesMap.put("Pediatrics", Arrays.asList("Childhood Fever", "Ear Infection", "Tonsillitis", "Chickenpox", "Growth Issues", "Childhood Asthma"));
+        treatmentsMap.put("Pediatrics", Arrays.asList("Pediatric Antibiotics", "Fever Reducers", "Vaccines", "Nutritional Guidance", "Inhalers"));
+
+        // Dermatology
+        diagnosesMap.put("Dermatology", Arrays.asList("Acne", "Eczema", "Psoriasis", "Skin Rash", "Fungal Infection", "Dermatitis"));
+        treatmentsMap.put("Dermatology", Arrays.asList("Topical Creams", "Antifungal Medication", "Steroid Creams", "Antibiotics", "Light Therapy"));
+
+        // Orthopedics
+        diagnosesMap.put("Orthopedics", Arrays.asList("Fracture", "Arthritis", "Osteoporosis", "Ligament Injury", "Back Pain", "Joint Pain"));
+        treatmentsMap.put("Orthopedics", Arrays.asList("Physical Therapy", "Pain Management", "Surgery", "Bracing", "Calcium Supplements"));
+
+        // Ophthalmology
+        diagnosesMap.put("Ophthalmology", Arrays.asList("Cataracts", "Glaucoma", "Conjunctivitis", "Myopia", "Hyperopia", "Dry Eye"));
+        treatmentsMap.put("Ophthalmology", Arrays.asList("Eye Drops", "Corrective Lenses", "Laser Surgery", "Eye Surgery", "Medication"));
+
+        // ENT
+        diagnosesMap.put("ENT (Ear, Nose, Throat)", Arrays.asList("Sinusitis", "Tonsillitis", "Hearing Loss", "Vertigo", "Nasal Polyps", "Throat Infection"));
+        treatmentsMap.put("ENT (Ear, Nose, Throat)", Arrays.asList("Antibiotics", "Nasal Spray", "Surgery", "Hearing Aids", "Decongestants"));
+
+        // Neurology
+        diagnosesMap.put("Neurology", Arrays.asList("Migraine", "Epilepsy", "Stroke", "Parkinson's Disease", "Multiple Sclerosis", "Neuropathy"));
+        treatmentsMap.put("Neurology", Arrays.asList("Anticonvulsants", "Pain Management", "Physical Therapy", "Medication", "Rehabilitation"));
+
+        // Gynecology
+        diagnosesMap.put("Gynecology", Arrays.asList("Menstrual Disorders", "PCOS", "Endometriosis", "Pregnancy Care", "Menopause", "Infections"));
+        treatmentsMap.put("Gynecology", Arrays.asList("Hormonal Therapy", "Contraceptives", "Surgery", "Prenatal Care", "Antibiotics"));
+
+        // Internal Medicine
+        diagnosesMap.put("Internal Medicine", Arrays.asList("Diabetes", "Hypertension", "Thyroid Disorders", "Anemia", "Liver Disease", "Kidney Disease"));
+        treatmentsMap.put("Internal Medicine", Arrays.asList("Insulin Therapy", "Blood Pressure Medication", "Thyroid Medication", "Iron Supplements", "Dialysis"));
+
+        // Psychiatry
+        diagnosesMap.put("Psychiatry", Arrays.asList("Depression", "Anxiety", "Bipolar Disorder", "Schizophrenia", "PTSD", "OCD"));
+        treatmentsMap.put("Psychiatry", Arrays.asList("Antidepressants", "Therapy", "Mood Stabilizers", "Antipsychotics", "Counseling"));
+
+        // Urology
+        diagnosesMap.put("Urology", Arrays.asList("UTI", "Kidney Stones", "Prostate Issues", "Incontinence", "Bladder Infection", "Erectile Dysfunction"));
+        treatmentsMap.put("Urology", Arrays.asList("Antibiotics", "Surgery", "Medication", "Lithotripsy", "Lifestyle Changes"));
+
+        int updated = 0;
+        List<DoctorSpecializationEntity> specs = repository.findAll();
+        for (DoctorSpecializationEntity spec : specs) {
+            List<String> diagnoses = diagnosesMap.get(spec.getDisplayName());
+            List<String> treatments = treatmentsMap.get(spec.getDisplayName());
+            if (diagnoses != null) {
+                spec.setDiagnoses(diagnoses);
+                updated++;
+            }
+            if (treatments != null) {
+                spec.setTreatmentPlans(treatments);
+            }
+            repository.save(spec);
+        }
+
+        return ResponseEntity.ok("Seeded diagnoses and treatments for " + updated + " specializations");
     }
 }

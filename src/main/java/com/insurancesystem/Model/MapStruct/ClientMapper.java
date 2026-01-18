@@ -16,7 +16,7 @@ public interface ClientMapper {
     // =========================
     // Entity ➜ DTO
     // =========================
-    @Mapping(target = "roles", expression = "java(mapRoleNames(entity.getRoles()))")
+    @Mapping(target = "roles", expression = "java(mapRoleNames(entity))")
 
     // ✅ استنتاج هل عنده أمراض مزمنة
     @Mapping(
@@ -76,11 +76,21 @@ public interface ClientMapper {
     // =========================
     // Helpers
     // =========================
-    default Set<RoleName> mapRoleNames(Set<Role> roles) {
-        return roles == null
-                ? Set.of()
-                : roles.stream()
-                .map(Role::getName)
-                .collect(Collectors.toSet());
+    default Set<RoleName> mapRoleNames(Client entity) {
+        // If the entity has roles assigned, use them
+        if (entity.getRoles() != null && !entity.getRoles().isEmpty()) {
+            return entity.getRoles().stream()
+                    .map(Role::getName)
+                    .collect(Collectors.toSet());
+        }
+
+        // Otherwise, fall back to requestedRole if it exists and is approved
+        if (entity.getRequestedRole() != null &&
+            entity.getRoleRequestStatus() == com.insurancesystem.Model.Entity.Enums.RoleRequestStatus.APPROVED) {
+            return Set.of(entity.getRequestedRole());
+        }
+
+        // If neither exists, return empty set
+        return Set.of();
     }
 }

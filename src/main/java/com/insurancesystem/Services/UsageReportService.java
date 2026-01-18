@@ -14,7 +14,7 @@ public class UsageReportService {
     private final PrescriptionRepository prescriptionRepo;
     private final LabRequestRepository labRepo;
     private final EmergencyRequestRepository emergencyRepo;
-    private final DocotrRepository recordRepo;
+    private final MedicalRecordRepository medicalRecordRepository;
 
     public UsageReportDto generateReport() {
         return UsageReportDto.builder()
@@ -43,14 +43,23 @@ public class UsageReportService {
                 .completedLabRequests(labRepo.findByStatus(LabRequestStatus.COMPLETED).size())
                 .pendingLabRequests(labRepo.findByStatus(LabRequestStatus.PENDING).size())
 
-                // Emergency Requests
+                // Emergency Requests (count both new and legacy status values)
                 .totalEmergencyRequests(emergencyRepo.count())
-                .approvedEmergencyRequests(emergencyRepo.findByStatus(EmergencyStatus.APPROVED_BY_MEDICAL).size())
-                .rejectedEmergencyRequests(emergencyRepo.findByStatus(EmergencyStatus.REJECTED_BY_MEDICAL).size())
-                .pendingEmergencyRequests(emergencyRepo.findByStatus(EmergencyStatus.PENDING_MEDICAL).size())
+                .approvedEmergencyRequests(
+                        emergencyRepo.findByStatus(EmergencyStatus.APPROVED_BY_MEDICAL).size() +
+                        emergencyRepo.findByStatus(EmergencyStatus.APPROVED).size()
+                )
+                .rejectedEmergencyRequests(
+                        emergencyRepo.findByStatus(EmergencyStatus.REJECTED_BY_MEDICAL).size() +
+                        emergencyRepo.findByStatus(EmergencyStatus.REJECTED).size()
+                )
+                .pendingEmergencyRequests(
+                        emergencyRepo.findByStatus(EmergencyStatus.PENDING_MEDICAL).size() +
+                        emergencyRepo.findByStatus(EmergencyStatus.PENDING).size()
+                )
 
                 // Medical Records
-                .totalMedicalRecords(recordRepo.count())
+                .totalMedicalRecords(medicalRecordRepository.count())
 
                 .build();
     }

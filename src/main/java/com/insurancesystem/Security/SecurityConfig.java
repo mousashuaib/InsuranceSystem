@@ -33,9 +33,15 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/**",
-                                "/api/doctor-specializations/**",  // للتسجيل
-                                "/api/policies/public/**",         // للتسجيل
+                                "/api/auth/login",
+                                "/api/auth/register",
+                                "/api/auth/forgot-password",
+                                "/api/auth/reset-password",
+                                "/api/auth/verify-email",
+                                "/api/migration/**",  // Migration endpoints (temporary)
+                                "/api/database/**",   // Database reset endpoint (temporary)
+                                "/api/notifications/debug/**",  // Debug endpoints (temporary)
+                                "/api/doctor-specializations/debug/**",  // Debug endpoints (temporary)
                                 "/uploads/**",
                                 "/ws-chat/**",      // 👈 السماح بالـ WebSocket endpoint
                                 "/api/doctor-specializations"
@@ -62,7 +68,7 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173")); // 👈 هنا بورت React
+        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:8080", "http://localhost")); // 👈 هنا بورت React + testing
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true); // مهم إذا بتستخدم Authorization Header (JWT)

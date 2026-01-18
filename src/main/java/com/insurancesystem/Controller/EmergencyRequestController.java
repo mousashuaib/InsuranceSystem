@@ -141,9 +141,9 @@ public class EmergencyRequestController {
         }
     }
 
-    // ✅ Emergency Manager/Medical Admin gets all requests
+    // ✅ Emergency Manager/Medical Admin/Insurance Manager gets all requests
     @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('EMERGENCY_MANAGER', 'MEDICAL_ADMIN')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER', 'MEDICAL_ADMIN')")
     public ResponseEntity<?> getAllEmergencyRequests() {
         try {
             return ResponseEntity.ok(emergencyService.getAllEmergencyRequests());
@@ -154,9 +154,9 @@ public class EmergencyRequestController {
         }
     }
 
-    // ✅ Emergency Manager/Medical Admin approves emergency request
+    // ✅ Emergency Manager/Medical Admin/Insurance Manager approves emergency request
     @PatchMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('EMERGENCY_MANAGER', 'MEDICAL_ADMIN')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER', 'MEDICAL_ADMIN')")
     public ResponseEntity<?> approveEmergencyRequest(@PathVariable UUID id) {
         try {
             return ResponseEntity.ok(emergencyService.approveEmergencyRequest(id));
@@ -171,9 +171,9 @@ public class EmergencyRequestController {
         }
     }
 
-    // ✅ Emergency Manager/Medical Admin rejects emergency request
+    // ✅ Emergency Manager/Medical Admin/Insurance Manager rejects emergency request
     @PatchMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('EMERGENCY_MANAGER', 'MEDICAL_ADMIN')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER', 'MEDICAL_ADMIN')")
     public ResponseEntity<?> rejectEmergencyRequest(
             @PathVariable UUID id,
             @Valid @RequestBody RejectEmergencyDTO dto

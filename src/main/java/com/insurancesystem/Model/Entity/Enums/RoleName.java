@@ -5,10 +5,8 @@ public enum RoleName {
     DOCTOR,
     PHARMACIST,
     LAB_TECH,
-    EMERGENCY_MANAGER,
     INSURANCE_MANAGER,
-    RADIOLOGIST // إضافة فني أشعة
-    , MEDICAL_ADMIN,
+    RADIOLOGIST,
+    MEDICAL_ADMIN,
     COORDINATION_ADMIN
-
 }

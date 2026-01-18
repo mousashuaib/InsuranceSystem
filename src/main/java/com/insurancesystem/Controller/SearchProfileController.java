@@ -30,7 +30,7 @@ public class SearchProfileController {
 
     // ✅ إنشاء بروفايل جديد مع رفع الملفات
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','EMERGENCY_MANAGER')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','MEDICAL_ADMIN')")
     public SearchProfileDto create(
             @RequestPart("data") SearchProfileDto dto,
             @RequestPart("medicalLicense") MultipartFile medicalLicense,
@@ -72,7 +72,7 @@ public class SearchProfileController {
 
     // ✅ Endpoint لتحميل الملفات - FIXED to handle + in filenames properly
     @GetMapping("/file/{filename:.+}")
-    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','EMERGENCY_MANAGER')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','MEDICAL_ADMIN')")
     public ResponseEntity<Resource> getFile(@PathVariable String filename) throws MalformedURLException {
         try {
             // 🔧 CRITICAL FIX: Use java.net.URI to properly decode the filename
@@ -145,21 +145,21 @@ public class SearchProfileController {
 
     // ✅ جلب بروفايل بالـ ID
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','EMERGENCY_MANAGER')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','MEDICAL_ADMIN')")
     public SearchProfileDto getById(@PathVariable UUID id) {
         return service.getById(id);
     }
 
     // ✅ البحث بالاسم
     @GetMapping("/by-name")
-    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','EMERGENCY_MANAGER')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','MEDICAL_ADMIN')")
     public List<SearchProfileDto> searchByName(@RequestParam String name) {
         return service.searchByName(name);
     }
 
     // ✅ البحث بالاسم + النوع
     @GetMapping("/by-name-type")
-    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','EMERGENCY_MANAGER')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','MEDICAL_ADMIN')")
     public List<SearchProfileDto> searchByNameAndType(
             @RequestParam String name,
             @RequestParam SearchProfileType type) {
@@ -168,7 +168,7 @@ public class SearchProfileController {
 
     // ✅ البحث بالنوع فقط
     @GetMapping("/by-type")
-    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','EMERGENCY_MANAGER')")
+    @PreAuthorize("hasAnyRole('INSURANCE_MANAGER','INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','MEDICAL_ADMIN')")
     public List<SearchProfileDto> getAllByType(@RequestParam SearchProfileType type) {
         return service.getAllByType(type);
     }
@@ -197,13 +197,16 @@ public class SearchProfileController {
     // ✅ جلب البروفايلات الموافق عليها فقط
 
     @GetMapping("/approved")
-<<<<<<< HEAD
-    @PreAuthorize("hasAnyRole('INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','EMERGENCY_MANAGER','INSURANCE_MANAGER','MEDICAL_ADMIN')")
-=======
-    @PreAuthorize("hasAnyRole('INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','EMERGENCY_MANAGER','INSURANCE_MANAGER','MEDICAL_ADMIN','COORDINATION_ADMIN')")
->>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8
+    @PreAuthorize("hasAnyRole('INSURANCE_CLIENT','DOCTOR','PHARMACIST','LAB_TECH','RADIOLOGIST','INSURANCE_MANAGER','MEDICAL_ADMIN','COORDINATION_ADMIN')")
     public List<SearchProfileDto> getApprovedProfiles() {
         return service.getApprovedProfiles();
+    }
+
+    // ✅ جلب البروفايلات المعلقة (Pending)
+    @GetMapping("/pending")
+    @PreAuthorize("hasRole('INSURANCE_MANAGER')")
+    public List<SearchProfileDto> getPendingProfiles() {
+        return service.getPendingProfiles();
     }
 
     // ✅ تعديل بروفايل

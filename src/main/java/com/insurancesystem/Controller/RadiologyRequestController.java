@@ -126,4 +126,11 @@ public class RadiologyRequestController {
     public List<ClientDto> getAllRadiologists() {
         return radiologyService.getAllRadiologists();
     }
+
+    // 📖 Get available radiology tests for doctors
+    @GetMapping("/available-tests")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public List<com.insurancesystem.Model.Dto.PriceListResponseDTO> getAvailableRadiologyTests() {
+        return radiologyService.getAvailableRadiologyTests();
+    }
 }

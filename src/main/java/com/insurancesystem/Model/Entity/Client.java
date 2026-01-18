@@ -45,6 +45,9 @@ public class Client {
     @Column(unique = true, length = 150)
     private String email;
 
+    @Column(name = "username", nullable = false, length = 150)
+    private String username;
+
     @Column(length = 40)
     private String phone;
 

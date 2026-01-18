@@ -14,6 +14,7 @@ import com.insurancesystem.Model.Entity.Prescription;
 import com.insurancesystem.Model.Entity.PrescriptionItem;
 import com.insurancesystem.Model.Entity.PriceList;
 import com.insurancesystem.Model.MapStruct.ClientMapper;
+import com.insurancesystem.Model.MapStruct.PriceListMapper;
 import com.insurancesystem.Model.MapStruct.PrescriptionMapper;
 import com.insurancesystem.Repository.*;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,7 @@ public class PrescriptionService {
     private final ClientMapper clientMapper;
     private final NotificationService notificationService;
     private final PrescriptionQuantityCalculator quantityCalculator;
+    private final PriceListMapper priceListMapper;
     private final ObjectMapper json = new ObjectMapper();
 
     private int extractQuantity(String jsonStr) {
@@ -1129,6 +1131,15 @@ public class PrescriptionService {
         return clientRepo.findByRoles_Name(RoleName.PHARMACIST)
                 .stream()
                 .map(clientMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    // Get available medicines for doctors (from price list with type PHARMACY)
+    public List<com.insurancesystem.Model.Dto.PriceListResponseDTO> getAvailableMedicines() {
+        return priceListRepo.findByProviderType(com.insurancesystem.Model.Entity.Enums.ProviderType.PHARMACY)
+                .stream()
+                .filter(PriceList::isActive)
+                .map(priceListMapper::toDto)
                 .collect(Collectors.toList());
     }
 

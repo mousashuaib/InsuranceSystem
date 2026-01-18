@@ -22,6 +22,7 @@ import com.insurancesystem.Security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -44,6 +45,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Transactional
 @Slf4j
 public class AuthService {
+
+    @Value("${app.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
 
     private final ClientRepository clientRepo;
     private final RoleService roleService;
@@ -267,7 +271,7 @@ public class AuthService {
                 }
             }
 
-            case INSURANCE_MANAGER, EMERGENCY_MANAGER -> {
+            case INSURANCE_MANAGER -> {
                 throw new BadRequestException(
                         "This role can only be created by system administrators"
                 );
@@ -318,11 +322,15 @@ public class AuthService {
                 req.getLabCode(), 
                 req.getRadiologyCode());
         
+        // Generate username from email (part before @)
+        String username = email.substring(0, email.indexOf('@'));
+
         Client client = Client.builder()
                 .passwordHash(passwordEncoder.encode(req.getPassword()))
                 .fullName(req.getFullName())
                 .nationalId(req.getNationalId())
                 .email(email)
+                .username(username)
                 .phone(req.getPhone())
                 // ✅ Store employeeId separately (for all roles)
                 .employeeId(req.getEmployeeId())
@@ -344,7 +352,7 @@ public class AuthService {
                 .radiologyName(req.getRadiologyName())
                 .radiologyLocation(req.getRadiologyLocation())
                 .dateOfBirth(req.getDateOfBirth())
-                .status(MemberStatus.INACTIVE)
+                .status(status)
                 .emailVerified(false)
                 .roleRequestStatus(roleStatus)
                 .requestedRole(role)
@@ -592,19 +600,10 @@ public class AuthService {
     public AuthResponse login(LoginRequest req) {
         String email = req.getEmail().trim().toLowerCase();
 
-<<<<<<< HEAD
-        // Find user by email
-        Client client = clientRepo.findByEmail(email)
-                .orElseThrow(() -> new NotFoundException("User not found"));
-
-        String username = client.getUsername();
-        ClientDto clientDTO = clientMapper.toDTO(client);
-=======
         ClientDto clientDTO = clientServices.getByEmail(email); // تغيير لبحث باستخدام الإيميل
         if (clientDTO == null) {
             throw new NotFoundException("User not found");
         }
->>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8
 
         MemberStatus status = clientDTO.getStatus();
 
@@ -619,7 +618,9 @@ public class AuthService {
 
         var authToken =
                 new UsernamePasswordAuthenticationToken(email, req.getPassword());
-        if (!clientDTO.isEmailVerified()) {
+        // Skip email verification for test accounts only
+        boolean isTestAccount = email.endsWith("@test.com");
+        if (!isTestAccount && !clientDTO.isEmailVerified()) {
             throw new BadRequestException("📧 Please verify your email first.");
         }
 
@@ -642,7 +643,7 @@ public class AuthService {
         String token = UUID.randomUUID().toString();
         resetTokens.put(token, client.getEmail());
 
-        String webResetLink = "http://localhost:5173/reset-password?token=" + token;
+        String webResetLink = frontendUrl + "/reset-password?token=" + token;
         String mobileResetLink = "mobileinsurancesystem://Auth/ResetPassword?token=" + token;
 
         if (isMobile) {

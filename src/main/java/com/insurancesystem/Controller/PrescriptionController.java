@@ -253,6 +253,19 @@ public class PrescriptionController {
         }
     }
 
+    // 📖 Get available medicines for doctors
+    @GetMapping("/available-items")
+    @PreAuthorize("hasRole('DOCTOR')")
+    public ResponseEntity<?> getAvailableMedicines() {
+        try {
+            return ResponseEntity.ok(prescriptionService.getAvailableMedicines());
+        } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
     // ✅ التحقق من الوصفات النشطة
     @GetMapping("/check-active/{memberName}/{medicineId}")
     @PreAuthorize("hasRole('DOCTOR')")

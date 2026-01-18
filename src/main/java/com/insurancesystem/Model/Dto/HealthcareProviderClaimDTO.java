@@ -43,40 +43,7 @@ public class HealthcareProviderClaimDTO {
     private Instant submittedAt;
     private Instant approvedAt;
     private Instant rejectedAt;
-    private Instant medicalReviewedAt;
     private String rejectionReason;
-<<<<<<< HEAD
-
-    // Additional fields for frontend display
-    private String providerRole;
-    private String diagnosis;
-    private String treatmentDetails;
-    private Boolean isFollowUp;
-
-    // Client info fields
-    private Integer clientAge;
-    private String clientGender;
-    private String clientEmployeeId;
-    private String clientNationalId;
-    private String clientFaculty;
-    private String clientDepartment;
-
-    // Provider info fields
-    private String providerEmployeeId;
-    private String providerNationalId;
-    private String providerSpecialization;
-    private String providerPharmacyCode;
-    private String providerLabCode;
-    private String providerRadiologyCode;
-
-    // Family member fields
-    private String familyMemberName;
-    private String familyMemberRelation;
-    private Integer familyMemberAge;
-    private String familyMemberGender;
-    private String familyMemberInsuranceNumber;
-    private String familyMemberNationalId;
-=======
     private String medicalReviewerName;
     private Instant medicalReviewedAt;
     private String providerRole;
@@ -85,6 +52,5 @@ public class HealthcareProviderClaimDTO {
     // Follow-up visit information
     private Boolean isFollowUp;
     private java.math.BigDecimal originalConsultationFee;
->>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8
 }
 

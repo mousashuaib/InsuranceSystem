@@ -52,11 +52,7 @@ public class HealthcareProviderClaim {
     private String roleSpecificData;
 
     @Enumerated(EnumType.STRING)
-<<<<<<< HEAD
-    @Column(nullable = false, length = 50)
-=======
     @Column(nullable = false, length = 30)
->>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8
     private ClaimStatus status;
 
     @Column(name = "invoice_image_path")
@@ -67,88 +63,9 @@ public class HealthcareProviderClaim {
     private Instant approvedAt;
 
     private Instant rejectedAt;
-<<<<<<< HEAD
-
-    private Instant medicalReviewedAt;
-
-=======
     private String doctorName;
->>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8
     @Column(columnDefinition = "text")
     private String rejectionReason;
-
-    // Additional fields for frontend display
-    @Column(name = "provider_role")
-    private String providerRole;
-
-    @Column(columnDefinition = "text")
-    private String diagnosis;
-
-    @Column(name = "treatment_details", columnDefinition = "text")
-    private String treatmentDetails;
-
-    @Column(name = "is_follow_up")
-    private Boolean isFollowUp;
-
-    // Client info fields for display
-    @Column(name = "client_age")
-    private Integer clientAge;
-
-    @Column(name = "client_gender")
-    private String clientGender;
-
-    @Column(name = "client_employee_id")
-    private String clientEmployeeId;
-
-    @Column(name = "client_national_id")
-    private String clientNationalId;
-
-    @Column(name = "client_faculty")
-    private String clientFaculty;
-
-    @Column(name = "client_department")
-    private String clientDepartment;
-
-    // Provider info fields for display
-    @Column(name = "provider_name")
-    private String providerName;
-
-    @Column(name = "provider_employee_id")
-    private String providerEmployeeId;
-
-    @Column(name = "provider_national_id")
-    private String providerNationalId;
-
-    @Column(name = "provider_specialization")
-    private String providerSpecialization;
-
-    @Column(name = "provider_pharmacy_code")
-    private String providerPharmacyCode;
-
-    @Column(name = "provider_lab_code")
-    private String providerLabCode;
-
-    @Column(name = "provider_radiology_code")
-    private String providerRadiologyCode;
-
-    // Family member fields
-    @Column(name = "family_member_name")
-    private String familyMemberName;
-
-    @Column(name = "family_member_relation")
-    private String familyMemberRelation;
-
-    @Column(name = "family_member_age")
-    private Integer familyMemberAge;
-
-    @Column(name = "family_member_gender")
-    private String familyMemberGender;
-
-    @Column(name = "family_member_insurance_number")
-    private String familyMemberInsuranceNumber;
-
-    @Column(name = "family_member_national_id")
-    private String familyMemberNationalId;
 
     @PrePersist
     void onCreate() {
@@ -198,12 +115,24 @@ public class HealthcareProviderClaim {
     private BigDecimal maxCoverageUsed = BigDecimal.ZERO;
 
     // Follow-up visit flag
-    @Column(name = "is_follow_up", nullable = false)
+    @Column(name = "is_follow_up", columnDefinition = "boolean default false")
     @Builder.Default
     private Boolean isFollowUp = false;
 
     // Original consultation fee (for follow-up visits, this is what patient pays)
     @Column(name = "original_consultation_fee", precision = 12, scale = 2)
     private BigDecimal originalConsultationFee = BigDecimal.ZERO;
+
+    // Chronic disease bypass flag
+    @Column(name = "is_chronic")
+    @Builder.Default
+    private Boolean isChronic = false;
+
+    // Payment tracking fields
+    @Column(name = "paid_at")
+    private Instant paidAt;
+
+    @Column(name = "paid_by")
+    private UUID paidBy;
 
 }

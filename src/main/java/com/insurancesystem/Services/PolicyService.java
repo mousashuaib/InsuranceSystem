@@ -65,14 +65,11 @@ public class PolicyService {
         Policy policy = policyRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("Policy not found"));
 
-        // افصل العملاء عن البوليصة
-        List<Client> clients = clientRepo.findByPolicy(policy);
-        for (Client c : clients) {
-            c.setPolicy(null);
-            clientRepo.save(c);
-        }
-        claimRepository.deleteAllByPolicy(policy);
+        // افصل العملاء عن البوليصة باستخدام استعلام مباشر لتجنب مشاكل الـ cascade
+        clientRepo.detachClientsFromPolicy(id);
 
+        // احذف المطالبات المرتبطة
+        claimRepository.deleteAllByPolicy(policy);
 
         // احذف الكفرجز المرتبطة
         coverageRepository.deleteAll(policy.getCoverages());

@@ -24,6 +24,8 @@ import com.insurancesystem.Repository.FamilyMemberRepository;
 import com.insurancesystem.Repository.PrescriptionRepository;
 import com.insurancesystem.Repository.LabRequestRepository;
 import com.insurancesystem.Repository.RadiologistRepository;
+import com.insurancesystem.Repository.SearchProfileRepository;
+import com.insurancesystem.Model.Entity.SearchProfile;
 import com.insurancesystem.Model.Entity.FamilyMember;
 import com.insurancesystem.Model.Entity.Prescription;
 import com.insurancesystem.Model.Entity.LabRequest;
@@ -36,7 +38,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.insurancesystem.Model.Entity.Enums.FamilyRelation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -53,17 +57,23 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class HealthcareProviderClaimService {
+
+    @Value("${app.base-url:http://localhost:8080}")
+    private String baseUrl;
+
     private final HealthcareProviderClaimRepository claimRepo;
     private final ClientRepository clientRepo;
     private final FamilyMemberRepository familyMemberRepo;
     private final PrescriptionRepository prescriptionRepo;
     private final LabRequestRepository labRequestRepo;
     private final RadiologistRepository radiologyRequestRepo;
+    private final SearchProfileRepository searchProfileRepo;
     private final PrescriptionMapper prescriptionMapper;
     private final LabRequestMapper labRequestMapper;
     private final com.insurancesystem.Model.MapStruct.RadiologyRequestMapper radiologyRequestMapper;
     private final HealthcareProviderClaimMapper claimMapper;
     private final NotificationService notificationService;
+    private final ClaimEngineService claimEngineService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final String UPLOAD_DIR = "uploads/healthcare-claims/";
 
@@ -75,6 +85,34 @@ public class HealthcareProviderClaimService {
     ) {
         Client provider = clientRepo.findById(providerId)
                 .orElseThrow(() -> new NotFoundException("Healthcare provider not found"));
+
+        // Check provider role
+        RoleName providerRole = provider.getRoles().stream()
+                .map(r -> r.getName())
+                .filter(r -> r == RoleName.DOCTOR || r == RoleName.PHARMACIST ||
+                            r == RoleName.LAB_TECH || r == RoleName.RADIOLOGIST)
+                .findFirst()
+                .orElse(null);
+
+        // Check for follow-up visit (Doctor claims only)
+        if (providerRole == RoleName.DOCTOR && dto.getClientId() != null) {
+            SearchProfile profile = searchProfileRepo.findByOwnerId(provider.getId()).orElse(null);
+            String specialization = provider.getSpecialization();
+
+            if (specialization != null && !specialization.isEmpty()) {
+                LocalDate fourteenDaysAgo = LocalDate.now().minusDays(14);
+
+                // Check if there's a recent claim from same specialization
+                boolean hasRecentVisit = claimRepo.existsByClientIdAndSpecializationAndServiceDateAfter(
+                    dto.getClientId(), specialization, fourteenDaysAgo);
+
+                if (hasRecentVisit) {
+                    throw new IllegalStateException(
+                        "Follow-up visits within 14 days are not covered. " +
+                        "Patient had a recent visit to " + specialization + " specialist.");
+                }
+            }
+        }
 
         HealthcareProviderClaim claim = claimMapper.toEntity(dto);
         claim.setHealthcareProvider(provider);
@@ -532,19 +570,60 @@ public class HealthcareProviderClaimService {
             claim.setInvoiceImagePath(saveDocument(invoiceImage));
         }
 
+        // Check for chronic disease bypass
+        boolean isChronicBypass = false;
+        if (dto.getIsChronic() != null && dto.getIsChronic()) {
+            // Validate patient has chronic disease registered
+            Client patientForChronic = dto.getClientId() != null ?
+                    clientRepo.findById(dto.getClientId()).orElse(null) : null;
+
+            if (patientForChronic == null) {
+                // Check if it's a family member
+                Optional<FamilyMember> familyMemberOpt = dto.getClientId() != null ?
+                        familyMemberRepo.findById(dto.getClientId()) : Optional.empty();
+                if (familyMemberOpt.isPresent()) {
+                    patientForChronic = familyMemberOpt.get().getClient();
+                }
+            }
+
+            if (patientForChronic != null) {
+                // Check if patient has chronicDiseases field populated
+                if (patientForChronic.getChronicDiseases() != null && !patientForChronic.getChronicDiseases().isEmpty()) {
+                    isChronicBypass = true;
+                    claim.setIsChronic(true);
+                } else {
+                    throw new IllegalStateException(
+                        "Patient is not registered with chronic diseases. Cannot bypass medical review.");
+                }
+            } else {
+                throw new NotFoundException("Patient not found for chronic disease validation");
+            }
+        }
+
+        // Set initial status based on chronic bypass
+        if (isChronicBypass) {
+            claim.setStatus(ClaimStatus.AWAITING_COORDINATION_REVIEW);
+        } else {
+            claim.setStatus(ClaimStatus.PENDING_MEDICAL);
+        }
+
+        // Apply coverage rules
+        claim = claimEngineService.applyCoverageRules(claim);
+
         HealthcareProviderClaim savedClaim = claimRepo.save(claim);
         final Client finalPatient = patient;
         final String finalPatientName = patientName;
+        final HealthcareProviderClaim finalClaim = savedClaim;
 
         // Send notification to medical admins
         clientRepo.findByRoles_Name(RoleName.MEDICAL_ADMIN)
                 .forEach(medicalAdmin -> {
                     String notificationMessage;
                     // Check if follow-up: either isFollowUp flag is true OR amount is 0 for DOCTOR claims
-                    boolean isFollowUpClaim = (claim.getIsFollowUp() != null && claim.getIsFollowUp()) ||
-                            (provider.getRoles().stream().anyMatch(r -> r.getName() == RoleName.DOCTOR) && 
-                             claim.getAmount() != null && claim.getAmount() == 0.0);
-                    
+                    boolean isFollowUpClaim = (finalClaim.getIsFollowUp() != null && finalClaim.getIsFollowUp()) ||
+                            (provider.getRoles().stream().anyMatch(r -> r.getName() == RoleName.DOCTOR) &&
+                             finalClaim.getAmount() != null && finalClaim.getAmount() == 0.0);
+
                     if (isFollowUpClaim) {
                         // Follow-up visit notification - only mention it's follow-up with 0 amount, patient pays
                         notificationMessage = "⚠️ مطالبة زيارة متابعة (Follow-up Visit) من الدكتور " + provider.getFullName() +
@@ -554,24 +633,24 @@ public class HealthcareProviderClaimService {
                         // Normal visit notification
                         notificationMessage = "📋 مطالبة جديدة من " + provider.getFullName() +
                                 (finalPatientName != null ? " للمريض " + finalPatientName : "") +
-                                " - المبلغ: " + claim.getAmount() + " شيكل";
+                                " - المبلغ: " + finalClaim.getAmount() + " شيكل";
                     }
                     notificationService.sendToUser(medicalAdmin.getId(), notificationMessage);
                 });
 
         // Check if follow-up for provider notification
-        boolean isFollowUpForProvider = (claim.getIsFollowUp() != null && claim.getIsFollowUp()) ||
-                (provider.getRoles().stream().anyMatch(r -> r.getName() == RoleName.DOCTOR) && 
-                 claim.getAmount() != null && claim.getAmount() == 0.0);
-        
+        boolean isFollowUpForProvider = (finalClaim.getIsFollowUp() != null && finalClaim.getIsFollowUp()) ||
+                (provider.getRoles().stream().anyMatch(r -> r.getName() == RoleName.DOCTOR) &&
+                 finalClaim.getAmount() != null && finalClaim.getAmount() == 0.0);
+
         if (isFollowUpForProvider) {
             // Follow-up visit notification for doctor
-            String consultationFee = claim.getOriginalConsultationFee() != null ? 
-                    claim.getOriginalConsultationFee().toString() : "0";
+            String consultationFee = finalClaim.getOriginalConsultationFee() != null ?
+                    finalClaim.getOriginalConsultationFee().toString() : "0";
             notificationService.sendToUser(
                     provider.getId(),
                     "✅ تم إرسال مطالبة زيارة متابعة بنجاح - المبلغ للدكتور: 0 شيكل (التأمين لا يدفع)" +
-                            (finalPatientName != null ? " - المريض " + finalPatientName + " يجب أن يدفع سعر الكشفية: " + consultationFee + " شيكل" : 
+                            (finalPatientName != null ? " - المريض " + finalPatientName + " يجب أن يدفع سعر الكشفية: " + consultationFee + " شيكل" :
                                     " - المريض يجب أن يدفع سعر الكشفية: " + consultationFee + " شيكل") +
                             " - في انتظار المراجعة الطبية"
             );
@@ -579,7 +658,7 @@ public class HealthcareProviderClaimService {
             // Normal visit notification for provider
             notificationService.sendToUser(
                     provider.getId(),
-                    "✅ تم إرسال مطالبتك بنجاح - المبلغ: " + claim.getAmount() + " شيكل" +
+                    "✅ تم إرسال مطالبتك بنجاح - المبلغ: " + finalClaim.getAmount() + " شيكل" +
                             (finalPatientName != null ? " للمريض " + finalPatientName : "") +
                             " - في انتظار المراجعة الطبية"
             );
@@ -866,8 +945,12 @@ public class HealthcareProviderClaimService {
                 claim.getHealthcareProvider().getId().equals(claim.getClientId())) {
             return "INSURANCE_CLIENT";
         }
-        return claim.getHealthcareProvider()
-                .getRoles()
+        // First try requestedRole (used by this system), then fall back to roles collection
+        Client provider = claim.getHealthcareProvider();
+        if (provider.getRequestedRole() != null) {
+            return provider.getRequestedRole().name();
+        }
+        return provider.getRoles()
                 .stream()
                 .findFirst()
                 .map(r -> r.getName().name())
@@ -902,7 +985,9 @@ public class HealthcareProviderClaimService {
         HealthcareProviderClaim claim = claimRepo.findById(claimId)
                 .orElseThrow(() -> new NotFoundException("Claim not found"));
 
+        // Accept both new and legacy status values for medical rejection
         if (claim.getStatus() != ClaimStatus.PENDING_MEDICAL &&
+                claim.getStatus() != ClaimStatus.PENDING &&  // Legacy status
                 claim.getStatus() != ClaimStatus.RETURNED_FOR_REVIEW) {
             throw new BadRequestException("Claim was already processed");
         }
@@ -946,7 +1031,9 @@ public class HealthcareProviderClaimService {
         HealthcareProviderClaim claim = claimRepo.findById(claimId)
                 .orElseThrow(() -> new NotFoundException("Claim not found"));
 
+        // Accept both new and legacy status values for medical review
         if (claim.getStatus() != ClaimStatus.PENDING_MEDICAL &&
+                claim.getStatus() != ClaimStatus.PENDING &&  // Legacy status
                 claim.getStatus() != ClaimStatus.RETURNED_FOR_REVIEW) {
             throw new BadRequestException("Claim already processed");
         }
@@ -1004,10 +1091,10 @@ public class HealthcareProviderClaimService {
         return resultDto;
     }
 
-    // Get claims pending medical review
+    // Get claims pending medical review (includes legacy PENDING status)
     public List<HealthcareProviderClaimMedicalDTO> getClaimsForMedicalReview() {
         List<HealthcareProviderClaim> claims = claimRepo.findByStatusInWithProvider(
-                List.of(ClaimStatus.PENDING_MEDICAL, ClaimStatus.RETURNED_FOR_REVIEW)
+                List.of(ClaimStatus.PENDING_MEDICAL, ClaimStatus.PENDING, ClaimStatus.RETURNED_FOR_REVIEW)
                 );
 
         return claims.stream().map(claim -> {
@@ -1140,131 +1227,14 @@ public class HealthcareProviderClaimService {
             String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
             Path path = Path.of(UPLOAD_DIR + fileName);
             Files.write(path, file.getBytes());
-            return "http://localhost:8080/uploads/healthcare-claims/" + fileName;
+            return baseUrl + "/uploads/healthcare-claims/" + fileName;
         } catch (IOException e) {
             throw new RuntimeException("Failed to save document", e);
         }
     }
-<<<<<<< HEAD
-
-    // Get claims for medical review (PENDING or RETURNED_FOR_REVIEW)
-    public List<HealthcareProviderClaimDTO> getClaimsForMedicalReview() {
-        List<ClaimStatus> statuses = List.of(
-                ClaimStatus.PENDING,
-                ClaimStatus.PENDING_MEDICAL,
-                ClaimStatus.RETURNED_FOR_REVIEW
-        );
-        return claimRepo.findByStatusIn(statuses).stream()
-                .map(claimMapper::toDto)
-                .toList();
-    }
-
-    // Get claims for coordination review
-    public List<HealthcareProviderClaimDTO> getClaimsForCoordinationReview() {
-        return claimRepo.findClaimsForCoordinationReview().stream()
-                .map(claimMapper::toDto)
-                .toList();
-    }
-
-    // Get final decisions
-    public List<HealthcareProviderClaimDTO> getFinalDecisions() {
-        return claimRepo.findFinalDecisions().stream()
-                .map(claimMapper::toDto)
-                .toList();
-    }
-
-    // Medical approve claim
-    public HealthcareProviderClaimDTO approveMedical(UUID claimId) {
-        HealthcareProviderClaim claim = claimRepo.findById(claimId)
-                .orElseThrow(() -> new NotFoundException("Claim not found"));
-
-        claim.setStatus(ClaimStatus.APPROVED_MEDICAL);
-        claim.setMedicalReviewedAt(Instant.now());
-        claimRepo.save(claim);
-
-        notificationService.sendToRole(
-                RoleName.COORDINATION_ADMIN,
-                "Medical approved claim from " + claim.getHealthcareProvider().getFullName()
-        );
-
-        return claimMapper.toDto(claim);
-    }
-
-    // Medical reject claim
-    public HealthcareProviderClaimDTO rejectMedical(UUID claimId, String reason) {
-        HealthcareProviderClaim claim = claimRepo.findById(claimId)
-                .orElseThrow(() -> new NotFoundException("Claim not found"));
-
-        claim.setStatus(ClaimStatus.REJECTED_MEDICAL);
-        claim.setRejectedAt(Instant.now());
-        claim.setRejectionReason(reason);
-        claimRepo.save(claim);
-
-        notificationService.sendToUser(
-                claim.getHealthcareProvider().getId(),
-                "Your claim was rejected by medical review. Reason: " + reason
-        );
-
-        return claimMapper.toDto(claim);
-    }
-
-    // Final approve claim (coordination admin)
-    public HealthcareProviderClaimDTO approveFinal(UUID claimId) {
-        HealthcareProviderClaim claim = claimRepo.findById(claimId)
-                .orElseThrow(() -> new NotFoundException("Claim not found"));
-
-        claim.setStatus(ClaimStatus.APPROVED_FINAL);
-        claim.setApprovedAt(Instant.now());
-        claimRepo.save(claim);
-
-        notificationService.sendToUser(
-                claim.getHealthcareProvider().getId(),
-                "Your claim of " + claim.getAmount() + " has been fully approved!"
-        );
-
-        return claimMapper.toDto(claim);
-    }
-
-    // Final reject claim (coordination admin)
-    public HealthcareProviderClaimDTO rejectFinal(UUID claimId, String reason) {
-        HealthcareProviderClaim claim = claimRepo.findById(claimId)
-                .orElseThrow(() -> new NotFoundException("Claim not found"));
-
-        claim.setStatus(ClaimStatus.REJECTED_FINAL);
-        claim.setRejectedAt(Instant.now());
-        claim.setRejectionReason(reason);
-        claimRepo.save(claim);
-
-        notificationService.sendToUser(
-                claim.getHealthcareProvider().getId(),
-                "Your claim was rejected. Reason: " + reason
-        );
-
-        return claimMapper.toDto(claim);
-    }
-
-    // Return to medical for review
-    public HealthcareProviderClaimDTO returnToMedical(UUID claimId, String reason) {
-        HealthcareProviderClaim claim = claimRepo.findById(claimId)
-                .orElseThrow(() -> new NotFoundException("Claim not found"));
-
-        claim.setStatus(ClaimStatus.RETURNED_FOR_REVIEW);
-        claim.setRejectionReason(reason);
-        claimRepo.save(claim);
-
-        notificationService.sendToRole(
-                RoleName.MEDICAL_ADMIN,
-                "Claim returned for medical review. Reason: " + reason
-        );
-
-        return claimMapper.toDto(claim);
-    }
-}
-=======
     // 📤 Export Approved Claims as PDF
     public byte[] exportApprovedClaimsPdf() {
         List<HealthcareProviderClaim> claims = claimRepo.findAllApprovedClaims();
->>>>>>> 59fc73de7f549007a5658aab4146b5707a8a4bd8
 
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -1385,11 +1355,11 @@ public class HealthcareProviderClaimService {
         Client admin = clientRepo.findById(adminId)
                 .orElseThrow(() -> new NotFoundException("Coordination admin not found"));
 
-        boolean isCoordinator = admin.getRoles().stream()
-                .anyMatch(r -> r.getName() == RoleName.COORDINATION_ADMIN);
+        boolean isCoordinatorOrManager = admin.getRoles().stream()
+                .anyMatch(r -> r.getName() == RoleName.COORDINATION_ADMIN || r.getName() == RoleName.INSURANCE_MANAGER);
 
-        if (!isCoordinator) {
-            throw new BadRequestException("Only coordination admin can create claims this way");
+        if (!isCoordinatorOrManager) {
+            throw new BadRequestException("Only coordination admin or manager can create claims this way");
         }
 
         if (dto.getClientId() == null) {
@@ -1432,12 +1402,8 @@ public class HealthcareProviderClaimService {
             claim.setClientName(client.getFullName());
         }
         
-        // Coordinator admin creates claim with APPROVED status directly
-        claim.setStatus(ClaimStatus.APPROVED_FINAL);
-        claim.setApprovedAt(Instant.now());
-        claim.setMedicalReviewerId(admin.getId());
-        claim.setMedicalReviewerName(admin.getFullName());
-        claim.setMedicalReviewedAt(Instant.now());
+        // Coordinator admin creates claim - requires medical review like all other claims
+        claim.setStatus(ClaimStatus.PENDING_MEDICAL);
 
         if (invoiceImage != null && !invoiceImage.isEmpty()) {
             claim.setInvoiceImagePath(saveDocument(invoiceImage));
@@ -1446,33 +1412,33 @@ public class HealthcareProviderClaimService {
         HealthcareProviderClaim savedClaim = claimRepo.save(claim);
         
         // Notification message for client
-        String clientNotificationMessage = familyMember != null 
-            ? "✅ تم إنشاء واعتماد مطالبة من المنسق الإداري " + admin.getFullName() + 
+        String clientNotificationMessage = familyMember != null
+            ? "📋 تم إنشاء مطالبة من المنسق الإداري " + admin.getFullName() +
               " لعضو الأسرة " + beneficiaryName +
               " - المبلغ: " + claim.getAmount() + " شيكل" +
-              " - تمت الموافقة مباشرة"
-            : "✅ تم إنشاء واعتماد مطالبة من المنسق الإداري " + admin.getFullName() +
+              " - في انتظار المراجعة الطبية"
+            : "📋 تم إنشاء مطالبة من المنسق الإداري " + admin.getFullName() +
               " للعميل " + beneficiaryName +
               " - المبلغ: " + claim.getAmount() + " شيكل" +
-              " - تمت الموافقة مباشرة";
+              " - في انتظار المراجعة الطبية";
 
         // Notify the client
         notificationService.sendToUser(
                 client.getId(),
                 clientNotificationMessage
         );
-        
-        // Notify medical admins about the approved claim created by coordinator
+
+        // Notify medical admins about the new claim created by coordinator that needs review
         String medicalAdminNotificationMessage = familyMember != null
-            ? "✅ تم إنشاء واعتماد مطالبة من المنسق الإداري " + admin.getFullName() +
+            ? "📋 مطالبة جديدة من المنسق الإداري " + admin.getFullName() +
               " لعضو الأسرة " + beneficiaryName + " (العميل: " + client.getFullName() + ")" +
               " - المبلغ: " + claim.getAmount() + " شيكل" +
-              " - تمت الموافقة مباشرة من المنسق الإداري"
-            : "✅ تم إنشاء واعتماد مطالبة من المنسق الإداري " + admin.getFullName() +
+              " - تحتاج مراجعة طبية"
+            : "📋 مطالبة جديدة من المنسق الإداري " + admin.getFullName() +
               " للعميل " + beneficiaryName +
               " - المبلغ: " + claim.getAmount() + " شيكل" +
-              " - تمت الموافقة مباشرة من المنسق الإداري";
-        
+              " - تحتاج مراجعة طبية";
+
         clientRepo.findByRoles_Name(RoleName.MEDICAL_ADMIN)
                 .forEach(medicalAdmin -> notificationService.sendToUser(
                         medicalAdmin.getId(),
@@ -1576,29 +1542,52 @@ public class HealthcareProviderClaimService {
         HealthcareProviderClaim claim = claimRepo.findById(claimId)
                 .orElseThrow(() -> new NotFoundException("Claim not found"));
 
-        if (claim.getStatus() != ClaimStatus.AWAITING_COORDINATION_REVIEW) {
-            throw new BadRequestException("Only claims awaiting coordination review can be returned");
+        // PAID status is final - cannot be changed
+        if (claim.getStatus() == ClaimStatus.PAID) {
+            throw new BadRequestException("Paid claims cannot be modified - payment is final");
         }
+
+        // Allow returning claims that are awaiting coordination review OR already approved
+        if (claim.getStatus() != ClaimStatus.AWAITING_COORDINATION_REVIEW &&
+            claim.getStatus() != ClaimStatus.APPROVED_FINAL) {
+            throw new BadRequestException("Only claims awaiting coordination review or approved claims can be returned for review");
+        }
+
+        boolean wasApproved = claim.getStatus() == ClaimStatus.APPROVED_FINAL;
 
         claim.setStatus(ClaimStatus.RETURNED_FOR_REVIEW);
         claim.setRejectionReason(reason);
         claim.setRejectedAt(Instant.now());
+        // Clear approval timestamp since it's being returned
+        if (wasApproved) {
+            claim.setApprovedAt(null);
+        }
 
         HealthcareProviderClaim saved = claimRepo.save(claim);
+
+        String medicalAdminMessage = wasApproved
+            ? "🚨 مراجعة طبية عاجلة\n" +
+              "تم إرجاع مطالبة موافق عليها مسبقاً للمراجعة.\n\n" +
+              "📝 ملاحظة:\n" + reason
+            : "🚨 مراجعة طبية عاجلة\n" +
+              "تم إرجاع مطالبة من المنسق الإداري.\n\n" +
+              "📝 ملاحظة:\n" + reason;
 
         clientRepo.findByRoles_Name(RoleName.MEDICAL_ADMIN)
                 .forEach(admin ->
                         notificationService.sendToUser(
                                 admin.getId(),
-                                "🚨 مراجعة طبية عاجلة\n" +
-                                        "تم إرجاع مطالبة من المنسق الإداري.\n\n" +
-                                        "📝 ملاحظة:\n" + reason
+                                medicalAdminMessage
                         )
                 );
 
+        String providerMessage = wasApproved
+            ? "⚠️ تم إرجاع مطالبتك الموافق عليها للمراجعة الطبية مرة أخرى:\n" + reason
+            : "⚠️ تمت إعادة مطالبتك للمراجعة الطبية بسبب ملاحظة إدارية:\n" + reason;
+
         notificationService.sendToUser(
                 claim.getHealthcareProvider().getId(),
-                "⚠️ تمت إعادة مطالبتك للمراجعة الطبية بسبب ملاحظة إدارية:\n" + reason
+                providerMessage
         );
 
         HealthcareProviderClaimDTO resultDto = claimMapper.toDto(saved);
@@ -1644,5 +1633,73 @@ public class HealthcareProviderClaimService {
 
             return dto;
         }).toList();
+    }
+
+    // Return claim to provider for corrections
+    @org.springframework.transaction.annotation.Transactional
+    public HealthcareProviderClaimDTO returnToProvider(UUID claimId, String reason, UUID reviewerId) {
+        HealthcareProviderClaim claim = claimRepo.findById(claimId)
+                .orElseThrow(() -> new NotFoundException("Claim not found"));
+
+        // Validate status allows return
+        if (claim.getStatus() != ClaimStatus.PENDING_MEDICAL &&
+            claim.getStatus() != ClaimStatus.AWAITING_COORDINATION_REVIEW) {
+            throw new IllegalStateException("Cannot return claim in status: " + claim.getStatus());
+        }
+
+        claim.setStatus(ClaimStatus.RETURNED_TO_PROVIDER);
+        claim.setRejectionReason(reason);
+
+        HealthcareProviderClaim saved = claimRepo.save(claim);
+
+        // Notify the provider about the returned claim
+        notificationService.sendToUser(
+                claim.getHealthcareProvider().getId(),
+                "⚠️ تمت إعادة مطالبتك للتصحيح:\n" + reason +
+                        "\nيرجى مراجعة المطالبة وإجراء التصحيحات اللازمة"
+        );
+
+        HealthcareProviderClaimDTO resultDto = claimMapper.toDto(saved);
+        populatePatientInfo(saved, resultDto);
+        return resultDto;
+    }
+
+    // Mark claim as paid
+    @Transactional
+    public HealthcareProviderClaimDTO markAsPaid(UUID claimId, UUID adminId) {
+        HealthcareProviderClaim claim = claimRepo.findById(claimId)
+                .orElseThrow(() -> new NotFoundException("Claim not found"));
+
+        if (claim.getStatus() != ClaimStatus.PAYMENT_PENDING &&
+            claim.getStatus() != ClaimStatus.APPROVED_FINAL) {
+            throw new IllegalStateException("Claim must be in PAYMENT_PENDING or APPROVED_FINAL status to mark as paid");
+        }
+
+        claim.setStatus(ClaimStatus.PAID);
+        claim.setPaidAt(Instant.now());
+        claim.setPaidBy(adminId);
+
+        HealthcareProviderClaim saved = claimRepo.save(claim);
+
+        // Notify the provider about the payment
+        notificationService.sendToUser(
+                claim.getHealthcareProvider().getId(),
+                "💰 تم دفع مطالبتك بنجاح - المبلغ: " + claim.getAmount() + " شيكل" +
+                        (claim.getClientName() != null ? " للمريض " + claim.getClientName() : "")
+        );
+
+        // Notify the patient (if exists)
+        if (claim.getClientId() != null) {
+            clientRepo.findById(claim.getClientId()).ifPresent(patient ->
+                    notificationService.sendToUser(
+                            patient.getId(),
+                            "💰 تم دفع مطالبتك الطبية من " + claim.getHealthcareProvider().getFullName()
+                    )
+            );
+        }
+
+        HealthcareProviderClaimDTO resultDto = claimMapper.toDto(saved);
+        populatePatientInfo(saved, resultDto);
+        return resultDto;
     }
 }

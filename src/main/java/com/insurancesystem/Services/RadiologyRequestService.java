@@ -11,6 +11,7 @@ import com.insurancesystem.Model.Entity.RadiologyRequest;
 import com.insurancesystem.Model.Entity.Enums.LabRequestStatus;
 import com.insurancesystem.Model.Entity.PriceList;
 import com.insurancesystem.Model.MapStruct.ClientMapper;
+import com.insurancesystem.Model.MapStruct.PriceListMapper;
 import com.insurancesystem.Model.MapStruct.RadiologyRequestMapper;
 import com.insurancesystem.Repository.ClientRepository;
 import com.insurancesystem.Repository.FamilyMemberRepository;
@@ -39,10 +40,11 @@ public class RadiologyRequestService {
     private final RadiologistRepository radiologyRequestRepository;
     private final ClientRepository clientRepository;
     private final FamilyMemberRepository familyMemberRepo;
-    private final PriceListRepository priceListRepository; // 🆕 ربط PriceList
+    private final PriceListRepository priceListRepository;
     private final RadiologyRequestMapper radiologyRequestMapper;
     private final ClientMapper clientMapper;
     private final NotificationService notificationService;
+    private final PriceListMapper priceListMapper;
 
     public UUID getRadiologistIdByEmail(String email) {
         Client radiologist = clientRepository.findByEmail(email.toLowerCase())
@@ -492,6 +494,15 @@ public class RadiologyRequestService {
         radiologist.setUpdatedAt(Instant.now());
 
         return clientMapper.toDTO(clientRepository.save(radiologist));
+    }
+
+    // 📖 Get available radiology tests for doctors (from price list with type RADIOLOGY)
+    public List<com.insurancesystem.Model.Dto.PriceListResponseDTO> getAvailableRadiologyTests() {
+        return priceListRepository.findByProviderType(com.insurancesystem.Model.Entity.Enums.ProviderType.RADIOLOGY)
+                .stream()
+                .filter(PriceList::isActive)
+                .map(priceListMapper::toDto)
+                .collect(Collectors.toList());
     }
 }
 

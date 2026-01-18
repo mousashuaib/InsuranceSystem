@@ -139,6 +139,14 @@ public class SearchProfileService {
                 .collect(Collectors.toList());
     }
 
+    // ✅ كل البروفايلات المعلقة (Pending)
+    public List<SearchProfileDto> getPendingProfiles() {
+        return repository.findByStatus(ProfileStatus.PENDING)
+                .stream()
+                .map(searchProfileMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
 
 
     public List<SearchProfileDto> getMyProfiles() {
