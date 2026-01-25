@@ -9,7 +9,10 @@ public enum ClaimStatus {
 
     // New workflow statuses
     PENDING_MEDICAL,          // New claims awaiting medical review
+    PENDING_COORDINATION,     // Alias for awaiting coordination (frontend compatibility)
     AWAITING_COORDINATION_REVIEW,  // Medical approved - awaiting coordination review
+    APPROVED_MEDICAL,         // Approved by medical admin (new workflow)
+    REJECTED_MEDICAL,         // Rejected by medical admin (new workflow)
     APPROVED_FINAL,           // Final approval (after coordination approval)
     REJECTED_FINAL,           // Final rejection
     RETURNED_FOR_REVIEW,      // Returned from coordinator to medical admin
