@@ -71,6 +71,7 @@ public class AuthService {
             MultipartFile[] universityCard,
             MultipartFile[] familyDocuments,
             MultipartFile[] chronicDocuments,
+            MultipartFile[] doctorDocuments,
             String familyDocumentsOwnersJson,
             boolean isAdminRegister
     )
@@ -120,50 +121,8 @@ public class AuthService {
         Optional<Client> existingOpt = clientRepo.findByEmail(email);
 
         if (existingOpt.isPresent()) {
-            Client existing = existingOpt.get();
-
-            // 🟢 الإيميل موجود ومُفعّل
-            if (existing.isEmailVerified()) {
-                throw new BadRequestException("Email already exists and is verified. Please sign in.");
-            }
-
-            // 🟡 الإيميل موجود لكن غير مُفعل → إعادة إرسال OTP
-            String otp = String.format("%06d", new Random().nextInt(900000) + 100000);
-
-            existing.setEmailVerificationCode(otp);
-            existing.setEmailVerificationExpiry(
-                    Instant.now().plusSeconds(10 * 60)
-            );
-
-            clientRepo.save(existing);
-
-            emailService.sendCustomEmail(
-                    existing.getEmail(),
-                    "Email Verification Code",
-                    """
-        ==============================
-         Email Verification
-        ==============================
-        
-        Dear %s,
-        
-        Your verification code is:
-        
-        %s
-        
-        This code will expire in 10 minutes.
-        
-        If you did not create this account, please ignore this email.
-        
-        Best regards,
-        Insurance System Team
-        """
-                            .formatted(existing.getFullName(), otp)
-            );
-
-            throw new BadRequestException(
-                    "Email already registered but not verified. Verification code resent."
-            );
+            // Email already exists - just tell user to sign in
+            throw new BadRequestException("Email already exists. Please sign in.");
         }
 
 
@@ -215,22 +174,18 @@ public class AuthService {
         switch (role) {
 
             case INSURANCE_CLIENT -> {
-                if (req.getEmployeeId() == null ||
-                        req.getDepartment() == null ||
-                        req.getFaculty() == null) {
-                    throw new BadRequestException(
-                            "Insurance client must provide employee ID, department, and faculty"
-                    );
-                }
+                // All fields are optional for insurance clients
+                // They will be filled in during approval process if needed
             }
 
             case DOCTOR -> {
-                if (req.getSpecialization() == null ||
-                        req.getClinicLocation() == null) {
+                // Specialization is required, clinic location is optional
+                if (req.getSpecialization() == null || req.getSpecialization().isBlank()) {
                     throw new BadRequestException(
-                            "Doctor must provide specialization and clinic location"
+                            "Doctor must provide specialization"
                     );
                 }
+                // Clinic location is optional for doctors
             }
 
             case PHARMACIST -> {
@@ -349,7 +304,7 @@ public class AuthService {
                 .radiologyLocation(req.getRadiologyLocation())
                 .dateOfBirth(req.getDateOfBirth())
                 .status(status)
-                .emailVerified(false)
+                .emailVerified(true)  // Skip email verification
                 .roleRequestStatus(roleStatus)
                 .requestedRole(role)
                 .createdAt(Instant.now())
@@ -370,40 +325,20 @@ public class AuthService {
 
         Client saved = savedClient; // ✅ Use the already saved client
 
+        // Email verification skipped - users are verified on registration
 
+        // Handle doctor documents
+        if (role == RoleName.DOCTOR) {
+            if (!isAdminRegister && (doctorDocuments == null || doctorDocuments.length == 0)) {
+                throw new BadRequestException("Doctors must upload medical license and certifications");
+            }
 
-        String otp = String.format("%06d", new Random().nextInt(900000) + 100000);
-
-        saved.setEmailVerificationCode(otp);
-        saved.setEmailVerificationExpiry(
-                Instant.now().plusSeconds(10 * 60) // 10 دقائق
-        );
-
-        clientRepo.save(saved);
-
-        emailService.sendCustomEmail(
-                saved.getEmail(),
-                "Email Verification Code",
-                """
-        ==============================
-         Email Verification
-        ==============================
-        
-        Dear %s,
-        
-        Your verification code is:
-        
-        %s
-        
-        This code will expire in 10 minutes.
-        
-        If you did not create this account, please ignore this email.
-        
-        Best regards,
-        Insurance System Team
-        """
-                        .formatted(saved.getFullName(), otp)
-        );
+            if (doctorDocuments != null && doctorDocuments.length > 0) {
+                List<String> doctorPaths = uploadDoctorDocuments(doctorDocuments);
+                saved.setDoctorDocumentPaths(doctorPaths);
+                clientRepo.save(saved);
+            }
+        }
 
         if (role == RoleName.INSURANCE_CLIENT && req.isHasChronicDiseases()) {
 
@@ -790,6 +725,31 @@ public class AuthService {
                 paths.add("/uploads/family/" + filename);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to upload family documents", e);
+            }
+        }
+        return paths;
+    }
+
+    private List<String> uploadDoctorDocuments(MultipartFile[] files) {
+        List<String> paths = new ArrayList<>();
+        if (files == null) return paths;
+
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) continue;
+
+            String ext = FilenameUtils.getExtension(file.getOriginalFilename()).toLowerCase();
+            if (!List.of("jpg", "jpeg", "png", "pdf").contains(ext)) {
+                throw new BadRequestException("Invalid doctor document type");
+            }
+
+            try {
+                String filename = UUID.randomUUID() + "." + ext;
+                Path dir = Path.of("uploads/doctor/");
+                Files.createDirectories(dir);
+                Files.write(dir.resolve(filename), file.getBytes());
+                paths.add("/uploads/doctor/" + filename);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to upload doctor documents", e);
             }
         }
         return paths;

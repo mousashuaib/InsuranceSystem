@@ -19,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/dashboard")
 @RequiredArgsConstructor
+@lombok.extern.slf4j.Slf4j
 public class DashboardController {
 
     private final ClientRepository clientRepository;
@@ -31,10 +32,19 @@ public class DashboardController {
         Map<String, Object> stats = new HashMap<>();
 
         // Count only approved insurance clients (not all users in the system)
-        long totalClients = clientRepository.findAll().stream()
-                .filter(c -> c.getRequestedRole() == RoleName.INSURANCE_CLIENT)
-                .filter(c -> c.getRoleRequestStatus() == RoleRequestStatus.APPROVED)
+        var allClients = clientRepository.findAll();
+        log.info("Total clients in DB: {}", allClients.size());
+
+        long totalClients = allClients.stream()
+                .filter(c -> {
+                    boolean isClient = c.getRequestedRole() == RoleName.INSURANCE_CLIENT;
+                    boolean isApproved = c.getRoleRequestStatus() == RoleRequestStatus.APPROVED;
+                    log.info("Client: {} | RequestedRole: {} | Status: {} | isClient: {} | isApproved: {}",
+                        c.getEmail(), c.getRequestedRole(), c.getRoleRequestStatus(), isClient, isApproved);
+                    return isClient && isApproved;
+                })
                 .count();
+        log.info("Filtered totalClients: {}", totalClients);
         stats.put("totalClients", totalClients);
 
         stats.put("totalPolicies", policyRepository.count());

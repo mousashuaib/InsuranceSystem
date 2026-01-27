@@ -16,6 +16,8 @@ public class HealthcareProviderClaimDTO {
     private String providerNationalId;
     private UUID clientId;
     private String clientName;
+    private String memberName; // Alias for clientName (for frontend compatibility)
+    private String policyName; // Policy name for display
     // Patient/Client information
     private Integer clientAge;
     private String clientGender;

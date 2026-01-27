@@ -31,6 +31,8 @@ public interface HealthcareProviderClaimMapper {
     @Mapping(source = "healthcareProvider.nationalId", target = "providerNationalId")
     @Mapping(source = "diagnosis", target = "diagnosis")
     @Mapping(source = "treatmentDetails", target = "treatmentDetails")
+    @Mapping(source = "clientName", target = "memberName") // For frontend compatibility
+    @Mapping(source = "policy.name", target = "policyName") // Policy name for display
     // ✅ المهم
     @Mapping(target = "medicalReviewerName", source = "medicalReviewerName")
     @Mapping(target = "medicalReviewedAt", source = "medicalReviewedAt")

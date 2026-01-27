@@ -31,6 +31,7 @@ public class AuthController {
             @RequestPart(value = "universityCard", required = false) MultipartFile[] universityCard,
             @RequestPart(value = "familyDocuments", required = false) MultipartFile[] familyDocuments,
             @RequestPart(value = "chronicDocuments", required = false) MultipartFile[] chronicDocuments,
+            @RequestPart(value = "doctorDocuments", required = false) MultipartFile[] doctorDocuments,
             @RequestPart(value = "familyDocumentsOwners", required = false) String familyDocumentsOwnersJson
 
             ) {
@@ -39,6 +40,7 @@ public class AuthController {
                 universityCard,
                 familyDocuments,
                 chronicDocuments,
+                doctorDocuments,
                 familyDocumentsOwnersJson,
                 false
         );
@@ -50,6 +52,7 @@ public class AuthController {
     public ResponseEntity<RegisterResponse> registerSimple(@RequestBody String reqJson) {
         var out = authService.register(
                 reqJson,
+                null,
                 null,
                 null,
                 null,
@@ -66,6 +69,7 @@ public class AuthController {
             @RequestPart(value = "universityCard", required = false) MultipartFile[] universityCard,
             @RequestPart(value = "familyDocuments", required = false) MultipartFile[] familyDocuments,
             @RequestPart(value = "chronicDocuments", required = false) MultipartFile[] chronicDocuments,
+            @RequestPart(value = "doctorDocuments", required = false) MultipartFile[] doctorDocuments,
             @RequestPart(value = "familyDocumentsOwners", required = false) String familyDocumentsOwnersJson
 
     ) {
@@ -75,6 +79,7 @@ public class AuthController {
                 universityCard,
                 familyDocuments,
                 chronicDocuments,
+                doctorDocuments,
                 familyDocumentsOwnersJson,
                 true
         );

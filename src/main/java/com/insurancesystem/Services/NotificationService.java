@@ -25,6 +25,18 @@ public class NotificationService {
     private final ClientRepository clientRepo;
     private final NotificationMapper notificationMapper;
 
+    /**
+     * Get system sender for system notifications.
+     * Uses the first INSURANCE_MANAGER as the system sender.
+     */
+    private Client getSystemSender() {
+        return clientRepo.findAll().stream()
+                .filter(c -> c.getRoles().stream()
+                        .anyMatch(r -> r.getName() == RoleName.INSURANCE_MANAGER))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No Insurance Manager found to send system notifications"));
+    }
+
     // ➕ إرسال إشعار يدوي (استفسار أو رد)
     public void createNotification(UUID senderId, UUID recipientId, String message, UUID repliedNotificationId) {
         Client recipient = clientRepo.findById(recipientId)
@@ -67,7 +79,7 @@ public class NotificationService {
 
         Notification notification = Notification.builder()
                 .recipient(recipient)
-                .sender(null)
+                .sender(getSystemSender())
                 .message(message)
                 .read(false)
                 .type(NotificationType.SYSTEM)
@@ -81,10 +93,12 @@ public class NotificationService {
                 .filter(c -> c.getRoles().stream().anyMatch(r -> r.getName() == roleName))
                 .toList();
 
+        Client systemSender = getSystemSender();
+
         List<Notification> notifications = clients.stream()
                 .map(client -> Notification.builder()
                         .recipient(client)
-                        .sender(null)
+                        .sender(systemSender)
                         .message(message)
                         .read(false)
                         .type(NotificationType.SYSTEM)

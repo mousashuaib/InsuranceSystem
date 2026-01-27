@@ -195,6 +195,12 @@ public class Client {
     @Column(name = "document_path")
     private List<String> chronicDocumentPaths = new ArrayList<>();
 
+    @Builder.Default
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "client_doctor_documents", joinColumns = @JoinColumn(name = "client_id"))
+    @Column(name = "document_path")
+    private List<String> doctorDocumentPaths = new ArrayList<>();
+
     @Column(name = "gender", length = 10)
     private String gender; // حقل الجنس
     @Column(

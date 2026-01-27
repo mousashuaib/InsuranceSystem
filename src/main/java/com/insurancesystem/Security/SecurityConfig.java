@@ -89,7 +89,7 @@ public class SecurityConfig {
         if (allowedOrigins != null && !allowedOrigins.isEmpty()) {
             config.setAllowedOrigins(List.of(allowedOrigins.split(",")));
         } else {
-            config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:8080", "http://localhost"));
+            config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174", "http://localhost:8080", "http://localhost"));
         }
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"));
