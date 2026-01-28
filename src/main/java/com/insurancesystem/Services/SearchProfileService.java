@@ -29,6 +29,17 @@ public class SearchProfileService {
     private final CustomUserDetailsService userDetailsService;
     private final NotificationService notificationService;
     public SearchProfileDto createProfile(SearchProfileDto dto) {
+        // 🧑‍💻 المستخدم الحالي (صاحب الطلب)
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Client currentUser = clientRepository.findByEmail(email.toLowerCase())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // ✅ Check if user already has a profile
+        List<SearchProfile> existingProfiles = repository.findAllByOwnerId(currentUser.getId());
+        if (!existingProfiles.isEmpty()) {
+            throw new RuntimeException("You already have a profile. Only one profile per user is allowed.");
+        }
+
         SearchProfile entity = searchProfileMapper.toEntity(dto);
 
         // ✅ Copy document fields (MapStruct already maps them, but this ensures clarity)
@@ -36,12 +47,6 @@ public class SearchProfileService {
         entity.setUniversityDegree(dto.getUniversityDegree());
         entity.setClinicRegistration(dto.getClinicRegistration());
         entity.setIdOrPassportCopy(dto.getIdOrPassportCopy());
-
-        // 🧑‍💻 المستخدم الحالي (صاحب الطلب)
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        Client currentUser = clientRepository.findByEmail(email.toLowerCase())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
 
         entity.setOwner(currentUser);
         entity.setStatus(ProfileStatus.PENDING);
