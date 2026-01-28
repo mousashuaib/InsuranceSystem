@@ -6,8 +6,7 @@
 
 <hr>
 
-<img width="1918" height="1028" alt="Backend Architecture Overview"
-     src="https://github.com/user-attachments/assets/REPLACE_ME" />
+<img width="1631" height="793" alt="Image" src="https://github.com/user-attachments/assets/ad2d6e23-808c-4b64-b8d5-88cbc2ca8ef7" />
 
 <h2>📌 Project Overview</h2>
 <p>
